@@ -299,7 +299,7 @@
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import { databaseService, type AIResponse } from '../../services/database';
 import { isTauriEnvironment } from '../../services/environmentDetector';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../../utils/invoke';
 import { save, open } from '@tauri-apps/plugin-dialog';
 import { writeFile } from '@tauri-apps/plugin-fs';
 import { generateExportData, type ExportFormat } from '../../utils/exporter';

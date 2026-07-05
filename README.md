@@ -42,3 +42,13 @@ https://www.bilibili.com/video/BV12PSQBLE5G
 ## 许可证
 
 本项目采用MIT许可证
+
+## Linux Headless Web Deployment
+
+To build and run the ZError backend as a headless server with a web interface on Linux, you can use the provided `deploy.sh` script. The script creates a `start_zerror.sh` wrapper in the release folder which you can use to launch the server on your configured port.
+
+```bash
+sudo ./deploy.sh
+```
+
+This will install the necessary dependencies, build the frontend and the `zerror_headless` binary, and prompt you for configuration details like the server port and web panel password.
