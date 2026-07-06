@@ -56,6 +56,3 @@ windows = { version = "0.56", features = ["Win32_Foundation", "Win32_UI_WindowsA
 [[bin]]
 name = "zerror_headless"
 path = "src/bin/headless.rs"
-
-[features]
-default = ["tauri", "tauri-build", "tauri-plugin-opener", "tauri-plugin-http", "tauri-plugin-fs", "tauri-plugin-dialog", "tauri-plugin-clipboard-manager"]
