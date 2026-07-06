@@ -7,6 +7,7 @@ use futures_util::StreamExt;
 use regex::Regex;
 use serde_json::Value;
 use std::collections::HashMap;
+#[cfg(feature = "tauri")]
 use tauri::{Emitter, State};
 use tokio_stream::wrappers::BroadcastStream;
 use uuid;
@@ -200,7 +201,8 @@ fn build_model_query_prompt(
 }
 
 /// 启动HTTP服务器
-#[tauri::command]
+#[cfg(feature = "tauri")]
+#[cfg_attr(feature = "tauri", tauri::command)]
 pub async fn start_server(
     port: u16,
     bind_address: String,
@@ -1022,7 +1024,8 @@ pub async fn start_server(
 /// # 返回值
 /// * `Ok(ServerInfo)` - 服务器停止成功，返回服务器信息
 /// * `Err(String)` - 服务器停止失败，返回错误信息
-#[tauri::command]
+#[cfg(feature = "tauri")]
+#[cfg_attr(feature = "tauri", tauri::command)]
 pub async fn stop_server(state: State<'_, ServerState>) -> Result<ServerInfo, String> {
     {
         let info = state.info.lock();
@@ -1055,7 +1058,8 @@ pub async fn stop_server(state: State<'_, ServerState>) -> Result<ServerInfo, St
 ///
 /// # 返回值
 /// * `Ok(ServerInfo)` - 返回当前服务器状态信息
-#[tauri::command]
+#[cfg(feature = "tauri")]
+#[cfg_attr(feature = "tauri", tauri::command)]
 pub async fn get_server_status(state: State<'_, ServerState>) -> Result<ServerInfo, String> {
     let info = state.info.lock();
     Ok(info.clone())

@@ -1,3 +1,4 @@
+#![cfg(feature = "tauri")]
 use crate::window_size::{resolve_window_size, FILE_INFO_WINDOW_PRESET, URL_CONTENT_WINDOW_PRESET};
 use tauri::{Manager, State};
 
@@ -30,7 +31,7 @@ use zip::ZipArchive;
 
 static JIEBA: OnceLock<Jieba> = OnceLock::new();
 
-#[tauri::command]
+#[cfg_attr(feature = "tauri", tauri::command)]
 pub fn segment_text(text: String) -> Vec<String> {
     let jieba = JIEBA.get_or_init(Jieba::new);
     // 使用搜索引擎模式分词，对应 python 的 jieba.cut_for_search
@@ -67,12 +68,12 @@ pub fn spawn_elevated_self() -> Result<(), String> {
     Err("unsupported_platform".to_string())
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "tauri", tauri::command)]
 pub fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "tauri", tauri::command)]
 pub async fn fetch_image_as_base64(app: tauri::AppHandle, url: String) -> Result<String, String> {
     // --- 磁盘缓存 ---
     let cache_dir = app
@@ -277,7 +278,7 @@ fn detect_image_type(bytes: &[u8]) -> &'static str {
     "image/png"
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "tauri", tauri::command)]
 pub async fn open_url_content_window(
     app: tauri::AppHandle,
     questions: String,
@@ -369,7 +370,7 @@ pub async fn open_url_content_window(
     }
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "tauri", tauri::command)]
 pub async fn open_text_window(
     app: tauri::AppHandle,
     title: String,
@@ -414,7 +415,7 @@ pub async fn open_text_window(
 }
 
 /// 读取文本文件内容（用于算法运行时提供原始文本输入）
-#[tauri::command]
+#[cfg_attr(feature = "tauri", tauri::command)]
 pub async fn read_file_text(path: String) -> Result<String, String> {
     match fs::read_to_string(&path) {
         Ok(s) => Ok(s),
@@ -422,7 +423,7 @@ pub async fn read_file_text(path: String) -> Result<String, String> {
     }
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "tauri", tauri::command)]
 pub async fn read_file_bytes(path: String) -> Result<String, String> {
     match fs::read(&path) {
         Ok(bytes) => Ok(general_purpose::STANDARD.encode(&bytes)),
@@ -430,7 +431,7 @@ pub async fn read_file_bytes(path: String) -> Result<String, String> {
     }
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "tauri", tauri::command)]
 pub async fn read_excel_headers(path: String) -> Result<Vec<String>, String> {
     let mut workbook = open_workbook_auto(&path).map_err(|e| format!("打开Excel失败: {}", e))?;
     let sheet_names = workbook.sheet_names().to_owned();
@@ -483,7 +484,7 @@ pub async fn read_excel_headers(path: String) -> Result<Vec<String>, String> {
     Ok(headers)
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "tauri", tauri::command)]
 pub async fn read_excel_range(
     path: String,
     start: i32,
@@ -590,7 +591,7 @@ fn read_docx_paragraphs(path: &str) -> Result<Vec<String>, String> {
     Ok(paragraphs)
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "tauri", tauri::command)]
 pub async fn read_docx_range(path: String, start: i32, end: i32) -> Result<Vec<String>, String> {
     let pars = read_docx_paragraphs(&path)?;
     if pars.is_empty() {
@@ -747,7 +748,7 @@ fn read_doc_paragraphs(path: &str) -> Result<Vec<String>, String> {
     Ok(paras)
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "tauri", tauri::command)]
 pub async fn read_doc_range(path: String, start: i32, end: i32) -> Result<Vec<String>, String> {
     let pars = read_doc_paragraphs(&path)?;
     if pars.is_empty() {
@@ -759,7 +760,7 @@ pub async fn read_doc_range(path: String, start: i32, end: i32) -> Result<Vec<St
     Ok(pars[(s as usize)..=(e as usize)].to_vec())
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "tauri", tauri::command)]
 pub async fn read_file_range(
     path: String,
     start: i32,
@@ -780,7 +781,7 @@ pub async fn read_file_range(
     }
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "tauri", tauri::command)]
 pub async fn convert_doc_to_docx(path: String) -> Result<String, String> {
     let lower = path.to_lowercase();
     if !lower.ends_with(".doc") || lower.ends_with(".docx") {
@@ -882,7 +883,7 @@ if __name__ == '__main__':
     Err(last_err.unwrap_or_else(|| "convert_failed".to_string()))
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "tauri", tauri::command)]
 pub fn create_directory(path: String) -> Result<String, String> {
     match fs::create_dir_all(&path) {
         Ok(_) => Ok(format!("Directory created: {}", path)),
@@ -890,17 +891,17 @@ pub fn create_directory(path: String) -> Result<String, String> {
     }
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "tauri", tauri::command)]
 pub fn get_username() -> Result<String, String> {
     db_get_username()
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "tauri", tauri::command)]
 pub fn file_exists(path: String) -> bool {
     db_file_exists(&path)
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "tauri", tauri::command)]
 pub async fn get_request_logs(state: State<'_, ServerState>) -> Result<Vec<RequestLog>, String> {
     match db_load_request_logs(Some(state.logger.max_logs())) {
         Ok(logs) => Ok(logs),
@@ -917,20 +918,20 @@ pub async fn get_request_logs(state: State<'_, ServerState>) -> Result<Vec<Reque
     }
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "tauri", tauri::command)]
 pub async fn get_daily_request_counts() -> Result<Vec<(String, i64)>, String> {
     crate::database::get_daily_request_counts()
 }
 
 
-#[tauri::command]
+#[cfg_attr(feature = "tauri", tauri::command)]
 pub async fn clear_request_logs(state: State<'_, ServerState>) -> Result<String, String> {
     db_clear_request_logs()?;
     state.logger.clear_logs();
     Ok("Request logs cleared successfully".to_string())
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "tauri", tauri::command)]
 pub async fn open_devtools(app: tauri::AppHandle) -> Result<String, String> {
     if let Some(window) = app.get_webview_window("main") {
         window.open_devtools();
@@ -940,7 +941,7 @@ pub async fn open_devtools(app: tauri::AppHandle) -> Result<String, String> {
     }
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "tauri", tauri::command)]
 pub fn request_admin_elevation(app: tauri::AppHandle) -> Result<String, String> {
     match spawn_elevated_self() {
         Ok(_) => {
@@ -965,7 +966,7 @@ fn get_config_path() -> std::path::PathBuf {
 }
 
 /// 读取配置文件
-#[tauri::command]
+#[cfg_attr(feature = "tauri", tauri::command)]
 pub fn read_config() -> Result<String, String> {
     let path = get_config_path();
     if path.exists() {
@@ -976,14 +977,14 @@ pub fn read_config() -> Result<String, String> {
 }
 
 /// 写入配置文件
-#[tauri::command]
+#[cfg_attr(feature = "tauri", tauri::command)]
 pub fn write_config(content: String) -> Result<(), String> {
     let path = get_config_path();
     std::fs::write(&path, content).map_err(|e| e.to_string())
 }
 
 /// 读取模型配置文件
-#[tauri::command]
+#[cfg_attr(feature = "tauri", tauri::command)]
 pub fn read_model_config() -> Result<String, String> {
     let path = get_exe_dir().join("model_config.json");
     if path.exists() {
@@ -994,13 +995,13 @@ pub fn read_model_config() -> Result<String, String> {
 }
 
 /// 写入模型配置文件
-#[tauri::command]
+#[cfg_attr(feature = "tauri", tauri::command)]
 pub fn write_model_config(content: String) -> Result<(), String> {
     let path = get_exe_dir().join("model_config.json");
     std::fs::write(&path, content).map_err(|e| e.to_string())
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "tauri", tauri::command)]
 pub async fn open_cache_dir(app: tauri::AppHandle) -> Result<(), String> {
     let cache_dir = app.path().app_local_data_dir().map_err(|e| e.to_string())?;
 
