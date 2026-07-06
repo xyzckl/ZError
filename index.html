@@ -4,10 +4,44 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ZError - OCS AI题库软件</title>
+    <title>ZError - OCS AI题库软件 (Linux Web版)</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #1a1a1a;
+        color: #e0e0e0;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      }
+      .linux-header {
+        background-color: #0f3316;
+        border-bottom: 2px solid #28a745;
+        padding: 20px;
+        text-align: center;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+      }
+      .linux-header h1 {
+        margin: 0;
+        font-size: 24px;
+        color: #28a745;
+      }
+      .linux-header p {
+        margin: 10px 0 0;
+        font-size: 16px;
+        color: #a5d6a7;
+      }
+      .linux-header strong {
+        color: #fff;
+      }
+    </style>
   </head>
 
   <body>
+    <header class="linux-header">
+      <h1>ZError - Linux Web版</h1>
+      <p>这是一个专为无头服务器打造的全天候远程Web控制AI题库</p>
+      <p><strong>注：</strong>本项目分支保持绝对独立性，专为Linux服务器设计，与Windows版本是完全不同的服务方向。</p>
+    </header>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
