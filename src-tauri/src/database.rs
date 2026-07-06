@@ -467,7 +467,7 @@ pub fn get_daily_request_counts() -> Result<Vec<(String, i64)>, String> {
     Ok(result)
 }
 
-#[cfg_attr(feature = "tauri", tauri::command)]
+#[tauri::command]
 pub async fn get_folders() -> Result<Vec<Folder>, String> {
     let conn = get_conn()?;
     let mut stmt = conn
@@ -492,7 +492,7 @@ pub async fn get_folders() -> Result<Vec<Folder>, String> {
     Ok(folders)
 }
 
-#[cfg_attr(feature = "tauri", tauri::command)]
+#[tauri::command]
 pub async fn get_ai_responses(folder_id: Option<i64>) -> Result<Vec<AIResponse>, String> {
     let conn = get_conn()?;
     let query = if folder_id.is_some() {
@@ -526,7 +526,7 @@ pub async fn get_ai_responses(folder_id: Option<i64>) -> Result<Vec<AIResponse>,
     Ok(responses)
 }
 
-#[cfg_attr(feature = "tauri", tauri::command)]
+#[tauri::command]
 pub async fn get_paginated_questions(
     folder_id: Option<i64>,
     pending_correction_only: bool,
@@ -682,7 +682,7 @@ pub async fn get_paginated_questions(
     Ok(PaginatedAIResponses { items, total })
 }
 
-#[cfg_attr(feature = "tauri", tauri::command)]
+#[tauri::command]
 pub async fn get_questions_recursive(folder_id: i64) -> Result<Vec<AIResponse>, String> {
     let conn = get_conn()?;
 
@@ -728,7 +728,7 @@ pub async fn get_questions_recursive(folder_id: i64) -> Result<Vec<AIResponse>, 
     Ok(responses)
 }
 
-#[cfg_attr(feature = "tauri", tauri::command)]
+#[tauri::command]
 pub async fn get_pending_correction_questions() -> Result<Vec<AIResponse>, String> {
     let conn = get_conn()?;
     let mut stmt = conn
@@ -752,7 +752,7 @@ pub async fn get_pending_correction_questions() -> Result<Vec<AIResponse>, Strin
     Ok(responses)
 }
 
-#[cfg_attr(feature = "tauri", tauri::command)]
+#[tauri::command]
 pub async fn get_pending_correction_question_count() -> Result<i64, String> {
     let conn = get_conn()?;
     conn.query_row(
@@ -763,7 +763,7 @@ pub async fn get_pending_correction_question_count() -> Result<i64, String> {
     .map_err(|e| format!("{}", e))
 }
 
-#[cfg_attr(feature = "tauri", tauri::command)]
+#[tauri::command]
 pub async fn set_question_pending_correction(id: i64, pending: bool) -> Result<(), String> {
     let conn = get_conn()?;
     let affected = conn
@@ -780,7 +780,7 @@ pub async fn set_question_pending_correction(id: i64, pending: bool) -> Result<(
     Ok(())
 }
 
-#[cfg_attr(feature = "tauri", tauri::command)]
+#[tauri::command]
 pub async fn get_folder_question_count(folder_id: i64) -> Result<i64, String> {
     let conn = get_conn()?;
     let count: i64 = conn
@@ -793,7 +793,7 @@ pub async fn get_folder_question_count(folder_id: i64) -> Result<i64, String> {
     Ok(count)
 }
 
-#[cfg_attr(feature = "tauri", tauri::command)]
+#[tauri::command]
 pub async fn get_folder_path(folder_id: i64) -> Result<Vec<FolderPathItem>, String> {
     let conn = get_conn()?;
     let mut stmt = conn
@@ -832,7 +832,7 @@ pub async fn get_folder_path(folder_id: i64) -> Result<Vec<FolderPathItem>, Stri
     Ok(path)
 }
 
-#[cfg_attr(feature = "tauri", tauri::command)]
+#[tauri::command]
 pub async fn get_folder_stats() -> Result<Vec<FolderStat>, String> {
     let conn = get_conn()?;
     let mut stmt = conn
@@ -948,7 +948,7 @@ fn get_configured_save_folder_id(conn: &Connection) -> i64 {
     }
 }
 
-#[cfg_attr(feature = "tauri", tauri::command)]
+#[tauri::command]
 pub async fn add_question(
     content: String,
     options: Option<String>,
@@ -987,7 +987,7 @@ pub async fn add_question(
     Ok(response)
 }
 
-#[cfg_attr(feature = "tauri", tauri::command)]
+#[tauri::command]
 pub async fn update_question(
     id: i64,
     question: Option<String>,
@@ -1042,7 +1042,7 @@ pub async fn update_question(
     Ok(())
 }
 
-#[cfg_attr(feature = "tauri", tauri::command)]
+#[tauri::command]
 pub async fn move_question(question_id: i64, target_folder_id: i64) -> Result<(), String> {
     let conn = get_conn()?;
     let actual_target_id =
@@ -1057,7 +1057,7 @@ pub async fn move_question(question_id: i64, target_folder_id: i64) -> Result<()
     Ok(())
 }
 
-#[cfg_attr(feature = "tauri", tauri::command)]
+#[tauri::command]
 pub async fn copy_question(question_id: i64, target_folder_id: i64) -> Result<(), String> {
     let conn = get_conn()?;
     let actual_target_id =
@@ -1090,7 +1090,7 @@ pub async fn copy_question(question_id: i64, target_folder_id: i64) -> Result<()
     Ok(())
 }
 
-#[cfg_attr(feature = "tauri", tauri::command)]
+#[tauri::command]
 pub async fn delete_question(id: i64) -> Result<(), String> {
     let conn = get_conn()?;
     conn.execute("DELETE FROM AIResponses WHERE Id = ?", [id])
@@ -1098,7 +1098,7 @@ pub async fn delete_question(id: i64) -> Result<(), String> {
     Ok(())
 }
 
-#[cfg_attr(feature = "tauri", tauri::command)]
+#[tauri::command]
 pub async fn delete_questions(ids: Vec<i64>) -> Result<(), String> {
     let conn = get_conn()?;
     // 由于 rusqlite 批量删除比较麻烦，这里采用循环方式
@@ -1109,7 +1109,7 @@ pub async fn delete_questions(ids: Vec<i64>) -> Result<(), String> {
     Ok(())
 }
 
-#[cfg_attr(feature = "tauri", tauri::command)]
+#[tauri::command]
 pub async fn clear_folder_questions(id: i64) -> Result<(), String> {
     let conn = get_conn()?;
 
@@ -1142,7 +1142,7 @@ pub async fn clear_folder_questions(id: i64) -> Result<(), String> {
     Ok(())
 }
 
-#[cfg_attr(feature = "tauri", tauri::command)]
+#[tauri::command]
 pub async fn delete_folder(id: i64, delete_questions: bool) -> Result<(), String> {
     let conn = get_conn()?;
 
@@ -1199,7 +1199,7 @@ pub async fn delete_folder(id: i64, delete_questions: bool) -> Result<(), String
     Ok(())
 }
 
-#[cfg_attr(feature = "tauri", tauri::command)]
+#[tauri::command]
 pub async fn rename_folder(id: i64, new_name: String) -> Result<(), String> {
     let conn = get_conn()?;
     conn.execute(
@@ -1210,7 +1210,7 @@ pub async fn rename_folder(id: i64, new_name: String) -> Result<(), String> {
     Ok(())
 }
 
-#[cfg_attr(feature = "tauri", tauri::command)]
+#[tauri::command]
 pub async fn move_folder(id: i64, parent_id: i64) -> Result<(), String> {
     let conn = get_conn()?;
     // 检查防止循环嵌套（虽然前端会有检查，但后端建议也做简单保护）
@@ -1226,7 +1226,7 @@ pub async fn move_folder(id: i64, parent_id: i64) -> Result<(), String> {
     Ok(())
 }
 
-#[cfg_attr(feature = "tauri", tauri::command)]
+#[tauri::command]
 pub async fn add_folder(name: String, parent_id: i64) -> Result<i64, String> {
     let conn = get_conn()?;
     conn.execute(
@@ -1238,7 +1238,7 @@ pub async fn add_folder(name: String, parent_id: i64) -> Result<i64, String> {
     Ok(conn.last_insert_rowid())
 }
 
-#[cfg_attr(feature = "tauri", tauri::command)]
+#[tauri::command]
 pub async fn search_questions_fuzzy(
     keyword: String,
     folder_id: Option<i64>,

@@ -1,4 +1,3 @@
-#![cfg(feature = "tauri")]
 use tauri::{AppHandle, Manager};
 
 #[derive(Clone, Copy)]

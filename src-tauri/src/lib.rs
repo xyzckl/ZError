@@ -2,20 +2,15 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 // 模块声明
-#[cfg(feature = "tauri")]
 pub mod commands;
 pub mod database;
 pub mod logger;
 pub mod server;
 pub mod types;
-#[cfg(feature = "tauri")]
 pub mod window_size;
 
-#[cfg(feature = "tauri")]
 use crate::window_size::{resolve_window_size, MAIN_WINDOW_PRESET};
-#[cfg(feature = "tauri")]
 pub use commands::open_text_window;
-#[cfg(feature = "tauri")]
 pub use commands::{
     clear_request_logs, convert_doc_to_docx, create_directory, fetch_image_as_base64, file_exists,
     get_daily_request_counts, get_request_logs, get_username, greet, open_cache_dir, open_devtools,
@@ -28,13 +23,10 @@ pub use database::{
     clear_folder_questions, delete_folder, delete_question, delete_questions, move_folder,
     rename_folder,
 };
-#[cfg(feature = "tauri")]
 pub use server::{get_server_status, start_server, stop_server};
-#[cfg(feature = "tauri")]
 use tauri::Manager;
 pub use types::*;
 
-#[cfg(feature = "tauri")]
 fn show_main_window<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
     #[cfg(target_os = "macos")]
     {
@@ -56,8 +48,6 @@ fn show_main_window<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
     }
 }
 
-
-#[cfg(feature = "tauri")]
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()

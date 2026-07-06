@@ -170,7 +170,7 @@ pub struct ServerState {
     pub info: Arc<Mutex<ServerInfo>>,
     pub handle: Arc<Mutex<Option<JoinHandle<()>>>>,
     pub logger: RequestLogger,
-    pub app_handle: Option<()>,
+    pub app_handle: Option<tauri::AppHandle>,
 }
 
 impl std::fmt::Debug for ServerState {
