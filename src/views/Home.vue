@@ -1240,7 +1240,7 @@ const clearLogs = async () => {
   }
 
   try {
-    const { invoke } = await import('@tauri-apps/api/core')
+    const { invoke } = await import('../utils/invoke')
     await invoke('clear_request_logs')
     requestLogs.value = []
     console.log('请求日志已清空')
@@ -1259,7 +1259,7 @@ const fetchRequestLogs = async () => {
   }
 
   try {
-    const { invoke } = await import('@tauri-apps/api/core')
+    const { invoke } = await import('../utils/invoke')
     const logs = await invoke('get_request_logs')
 
     // 转换日志格式以匹配前端接口
@@ -1502,7 +1502,7 @@ const isTauri = ref(false)
 const checkTauriEnvironment = async () => {
   try {
     // 尝试导入 Tauri API
-    const { invoke } = await import('@tauri-apps/api/core')
+    const { invoke } = await import('../utils/invoke')
     // 尝试调用一个简单的命令来确认 Tauri 可用
     await invoke('greet', { name: 'test' })
     isTauri.value = true
@@ -1529,7 +1529,7 @@ const getServerStatus = async () => {
   }
 
   try {
-    const { invoke } = await import('@tauri-apps/api/core')
+    const { invoke } = await import('../utils/invoke')
     const status = await invoke('get_server_status')
     serverRunning.value = (status as any).running
     serverUrl.value = (status as any).url || ''
@@ -1551,7 +1551,7 @@ const startServer = async () => {
 
   try {
     isToggling.value = true
-    const { invoke } = await import('@tauri-apps/api/core')
+    const { invoke } = await import('../utils/invoke')
 
     // 使用设置中的网络配置，确保绑定地址根据enableLanAccess状态正确设置
     const networkConfig = get('network')
@@ -1590,7 +1590,7 @@ const stopServer = async () => {
     cancelAllInFlightModelRequests()
     stopSSEConnection()
     stopLogPolling()
-    const { invoke } = await import('@tauri-apps/api/core')
+    const { invoke } = await import('../utils/invoke')
     const result = await invoke('stop_server')
 
     serverRunning.value = (result as any).running
@@ -1689,7 +1689,7 @@ const handleFolderConfirm = async (folderId: number, folderName: string, folderP
 async function updateThinkingModelFlag(model: AIModel | null): Promise<void> {
   try {
     if (!isTauri.value) return
-    const { invoke } = await import('@tauri-apps/api/core')
+    const { invoke } = await import('../utils/invoke')
     const isThinking = !!model?.jsCode && model.jsCode.includes('reasoning_content')
     // 同时传入 is_thinking 与 isThinking，兼容不同后端参数命名
     await invoke('set_current_model_is_thinking', { is_thinking: isThinking, isThinking })
@@ -1877,8 +1877,8 @@ const callModelWithStreaming = async (
   registerAbortController(requestId, abortController)
   const timeoutHandle = setTimeout(() => abortController.abort(), timeoutMs)
 
-  const tauriHttp = await import('@tauri-apps/plugin-http')
-  const { invoke } = await import('@tauri-apps/api/core')
+  const tauriHttp = { fetch }
+  const { invoke } = await import('../utils/invoke')
   const tauriFetch = (input: RequestInfo | URL, init: RequestInit = {}) =>
     tauriHttp.fetch(input as any, {
       ...init,
@@ -2110,7 +2110,7 @@ const callModel = async (model: AIModel, query: string) => {
     ...model
   }
 
-  const tauriHttp = await import('@tauri-apps/plugin-http')
+  const tauriHttp = { fetch }
   const tauriFetch = (input: RequestInfo | URL, init: RequestInit = {}) =>
     tauriHttp.fetch(input as any, {
       ...init,
@@ -2986,11 +2986,11 @@ const checkAndShowUrlDialog = async (log: RequestLog) => {
         // 尝试检查窗口是否已存在
         let windowExists = false
         try {
-          const { invoke } = await import('@tauri-apps/api/core')
+          const { invoke } = await import('../utils/invoke')
 
           // 先尝试检查窗口是否存在
           try {
-            const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow')
+            const WebviewWindow = undefined
 
             // 方法1: 尝试直接获取窗口实例
             let existingWindow = null
@@ -3069,7 +3069,7 @@ const checkAndShowUrlDialog = async (log: RequestLog) => {
                 // 窗口已存在，通过事件通信来更新数据
                 try {
                   // 方法1: 通过事件发送新题目数据
-                  const { emit } = await import('@tauri-apps/api/event')
+                  const emit = (event: string, payload?: any) => {}
                   await emit('new-question-added', {
                     windowId: currentUrlWindowId.value,
                     questions: existingQuestions,
@@ -3549,7 +3549,7 @@ const analyzeUrlQuestion = async (requestId: string) => {
     }
     const config = { apiKey: platform.apiKey, baseUrl: platform.baseUrl, model: visionModel.id, ...visionModel }
 
-    const tauriHttp = await import('@tauri-apps/plugin-http')
+    const tauriHttp = { fetch }
     const tauriFetch: typeof fetch = ((input: RequestInfo | URL, init: RequestInit = {}) =>
       tauriHttp.fetch(input as any, {
         ...init,

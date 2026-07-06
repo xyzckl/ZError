@@ -278,7 +278,7 @@ let pendingRemoteModelsCatalogRequest: Promise<RemoteModelsCatalog> | null = nul
 
 const requestRemoteModelsCatalog = async (): Promise<RemoteModelsCatalog> => {
   try {
-    const { fetch: tauriFetch } = await import('@tauri-apps/plugin-http')
+    const tauriFetch = fetch
     const r = await tauriFetch(getRemoteModelsUrl(), { method: 'GET' })
     if (!r.ok) throw new Error(`HTTP ${r.status}`)
     return normalizeRemoteModelsCatalog(await r.json())
@@ -701,7 +701,7 @@ class ModelConfigManager {
    */
   private async saveToFile(): Promise<void> {
     try {
-      const { invoke } = await import('@tauri-apps/api/core')
+      const { invoke } = await import('../utils/invoke')
       await invoke('write_model_config', { content: JSON.stringify(this.settings) })
     } catch {
       // 非 Tauri 环境忽略

@@ -1,43 +1,43 @@
-
-
 <div align="center">
-  <img src="https://free.picui.cn/free/2026/03/30/69ca3ec05ae5f.ico" alt="ZError Logo" width="128">
-  <br>
-  <h2>ZError</h3>
-  <span>支持OCS网课助手的AI题库管理软件</span>
+  <h2>ZError Web</h3>
+  <span>支持OCS网课助手的AI题库管理软件（Linux Web版）</span>
 </div>
 
 ## 项目简介
 
-ZError是一款专为OCS网课助手设计的AI题库软件，可以方便地为OCS网课助手搭建本地AI题库。软件由Tauri架构开发，支持AI平台以及模型的自定义。
-
-![软件首页](https://free.picui.cn/free/2025/11/09/691031b4dd824.png)
+ZError Web是一款专为OCS网课助手设计的AI题库软件，可以方便地为OCS网课助手搭建本地AI题库。本版本经过重构，专为Linux服务器部署设计，并提供Web可视化管理面板。软件采用Rust后端和Vue前端架构，支持AI平台以及模型的自定义。
 
 ## 主要功能
 
 - OCS题库配置
 - 自定义AI供应商以及AI模型
 - 本地题库管理与缓存
+- Web端管理面板
+- 支持一键部署
 
 ## 题库管理
 
-软件内置题库管理功能，支持题目编辑，文件夹分类。
-
-![题库页面](https://free.picui.cn/free/2025/11/09/691031f9db6f9.png)
-
-## 使用教程
-
-https://www.bilibili.com/video/BV12PSQBLE5G
+软件内置题库管理功能，支持题目编辑，文件夹分类。完全通过浏览器进行操作管理。
 
 ## 系统要求
 
-- Windows 10/11
+- Linux服务器环境
+- Node.js环境 (用于前端构建)
+- Rust环境 (用于后端构建)
 
 ## 安装方法
 
-1. 从[官网](https://app.zerror.cc/)下载最新版本
-2. 运行安装程序
-3. 运行软件
+我们提供了一键安装脚本，运行脚本即可完成部署和配置：
+
+```bash
+chmod +x install.sh
+./install.sh
+```
+
+在安装过程中：
+1. 您需要选择Web管理面板的端口（不能为80端口）。
+2. 80端口默认预留为OCS答案回传端口。
+3. 安装完成后，脚本会自动配置并启动Systemd服务。
 
 ## 许可证
 

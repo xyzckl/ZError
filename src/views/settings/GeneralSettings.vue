@@ -229,7 +229,7 @@ const openCacheFolder = async () => {
   openingCache.value = true
   try {
     if (!invoke) {
-      const core = await import('@tauri-apps/api/core')
+      const core = await import('../../utils/invoke')
       invoke = core.invoke
     }
     await invoke('open_cache_dir')
@@ -277,7 +277,7 @@ const openLanAccessDocs = async () => {
   const url = 'https://docs.zerror.cc/docs/local/LAN'
   if (environmentDetector.isTauriEnvironment) {
     try {
-      const { openUrl } = await import('@tauri-apps/plugin-opener')
+      const openUrl = (url: string) => window.open(url, "_blank")
       await openUrl(url)
     } catch (error) {
       window.open(url, '_blank')

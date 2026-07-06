@@ -1298,7 +1298,7 @@ const openModelConfigDocs = async () => {
 const openPlatformUrl = async (url: string) => {
   if (environmentDetector.isTauriEnvironment) {
     try {
-      const { openUrl } = await import('@tauri-apps/plugin-opener')
+      const openUrl = (url: string) => window.open(url, "_blank")
       await openUrl(url)
     } catch (error) {
       window.open(url, '_blank')
@@ -1414,7 +1414,7 @@ const testModel = async (model: AIModel, testFunctionCalling: boolean = false) =
               // 方法2：尝试使用 Tauri 资源解析
               try {
                 console.log('🔍 [DEBUG] Attempting Tauri resource resolution for test image')
-                const { convertFileSrc } = await import('@tauri-apps/api/core')
+                const { convertFileSrc } = await import('../../utils/invoke')
                 const resourcePath = 'assets/images/vlm_test/vlm_test.png'
                 imageUrl = convertFileSrc(resourcePath)
                 console.log('✅ [DEBUG] Tauri converted URL for test image:', imageUrl)
@@ -1528,7 +1528,7 @@ const testModel = async (model: AIModel, testFunctionCalling: boolean = false) =
       ...model
     }
     
-    const tauriHttp = await import('@tauri-apps/plugin-http')
+    const tauriHttp = { fetch }
     const tauriFetch = createCookieEnabledFetch(
       (input, init) => tauriHttp.fetch(input as any, init as any),
       testAbortController.value?.signal

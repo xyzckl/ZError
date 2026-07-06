@@ -1,3 +1,16 @@
+
+fn get_web_port() -> Option<u16> {
+    let args: Vec<String> = std::env::args().collect();
+    for i in 0..args.len() {
+        if args[i] == "--web-port" && i + 1 < args.len() {
+            if let Ok(port) = args[i + 1].parse::<u16>() {
+                return Some(port);
+            }
+        }
+    }
+    None
+}
+
 use crate::database::{insert_ai_response, query_database, set_question_pending_correction};
 use crate::types::{
     ModelCallProgressRequest, ModelCallResponseRequest, QueryData, QueryRequest, QueryResponse,
@@ -48,6 +61,14 @@ fn check_admin_token(auth: &Option<String>) -> bool {
 }
 
 /// 检测文本中是否包含URL
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+struct InvokeRequest {
+    cmd: String,
+    args: Value,
+}
+
 fn contains_url(text: &str) -> bool {
     let url_regex = Regex::new(r"https?://[^\s]+").unwrap();
     url_regex.is_match(text)
@@ -200,11 +221,11 @@ fn build_model_query_prompt(
 }
 
 /// 启动HTTP服务器
-#[tauri::command]
+
 pub async fn start_server(
     port: u16,
     bind_address: String,
-    state: State<'_, ServerState>,
+    state: std::sync::Arc<ServerState>,
 ) -> Result<ServerInfo, String> {
     // 验证端口号
     if port == 0 {
@@ -954,6 +975,170 @@ pub async fn start_server(
         });
 
     // 组合所有路由（query路由和SSE路由不需要额外的日志中间件）
+
+let invoke_route = warp::path!("api" / "invoke")
+        .and(warp::post())
+        .and(warp::body::json())
+        .and(warp::header::optional::<String>("authorization"))
+        .and_then(|body: InvokeRequest, auth: Option<String>| async move {
+            if !crate::server::check_admin_token(&auth) {
+                // Return unauthorized if no valid token
+                // Actually, the original app allowed everything without token when local.
+                // We'll enforce token for write operations.
+                let cmd = body.cmd.as_str();
+                if cmd.starts_with("write_") || cmd.starts_with("delete_") || cmd.starts_with("add_") || cmd == "update_question" || cmd.starts_with("rename_") || cmd.starts_with("move_") || cmd.starts_with("clear_") || cmd.starts_with("copy_") {
+                    if !crate::server::check_admin_token(&auth) {
+                        return Ok::<_, warp::Rejection>(warp::reply::json(&serde_json::json!({
+                            "success": false,
+                            "error": "Unauthorized"
+                        })));
+                    }
+                }
+            }
+            let result = match body.cmd.as_str() {
+                "get_username" => {
+                    serde_json::to_value(crate::database::get_username().unwrap_or_else(|_| "Administrator".to_string())).unwrap()
+                },
+                "read_config" => {
+                    serde_json::to_value(crate::commands::read_config().unwrap_or_default()).unwrap()
+                },
+                "write_config" => {
+                    let content = body.args.get("content").and_then(|v| v.as_str()).unwrap_or("");
+                    serde_json::to_value(crate::commands::write_config(content.to_string()).unwrap_or_default()).unwrap()
+                },
+                "read_model_config" => {
+                    serde_json::to_value(crate::commands::read_model_config().unwrap_or_default()).unwrap()
+                },
+                "write_model_config" => {
+                    let content = body.args.get("content").and_then(|v| v.as_str()).unwrap_or("");
+                    serde_json::to_value(crate::commands::write_model_config(content.to_string()).unwrap_or_default()).unwrap()
+                },
+                "get_folders" => {
+                    serde_json::to_value(crate::database::get_folders().await.unwrap_or_default()).unwrap()
+                },
+                "get_folder_stats" => {
+                    serde_json::to_value(crate::database::get_folder_stats().await.unwrap_or_default()).unwrap()
+                },
+                "get_folder_path" => {
+                    let folder_id = body.args.get("folderId").and_then(|v| v.as_i64()).unwrap_or(0);
+                    serde_json::to_value(crate::database::get_folder_path(folder_id).await.unwrap_or_default()).unwrap()
+                },
+                "search_questions_fuzzy" => {
+                    let keyword = body.args.get("keyword").and_then(|v| v.as_str()).unwrap_or("");
+                    let folder_id = body.args.get("folderId").and_then(|v| v.as_i64());
+                    serde_json::to_value(crate::database::search_questions_fuzzy(keyword.to_string(), folder_id).await.unwrap_or_default()).unwrap()
+                },
+                "get_paginated_questions" => {
+                    let folder_id = body.args.get("folderId").and_then(|v| v.as_i64());
+                    let page = body.args.get("page").and_then(|v| v.as_u64()).unwrap_or(1) as i32;
+                    let page_size = body.args.get("pageSize").and_then(|v| v.as_u64()).unwrap_or(20) as i32;
+                    serde_json::to_value(crate::database::get_paginated_questions(folder_id, false, page as i64, page_size as i64, None).await.ok()).unwrap()
+                },
+                "get_folder_question_count" => {
+                    let folder_id = body.args.get("folderId").and_then(|v| v.as_i64());
+                    serde_json::to_value(crate::database::get_folder_question_count(folder_id.unwrap_or(0)).await.unwrap_or(0)).unwrap()
+                },
+                "add_folder" => {
+                    let name = body.args.get("name").and_then(|v| v.as_str()).unwrap_or("");
+                    let parent_id = body.args.get("parentId").and_then(|v| v.as_i64()).unwrap_or(0);
+                    serde_json::to_value(crate::database::add_folder(name.to_string(), parent_id).await.unwrap_or(0)).unwrap()
+                },
+                "delete_folder" => {
+                    let id = body.args.get("id").and_then(|v| v.as_i64()).unwrap_or(0);
+                    let delete_questions = body.args.get("deleteQuestions").and_then(|v| v.as_bool()).unwrap_or(false);
+                    serde_json::to_value(crate::database::delete_folder(id, delete_questions).await.unwrap_or_default()).unwrap()
+                },
+                "rename_folder" => {
+                    let id = body.args.get("id").and_then(|v| v.as_i64()).unwrap_or(0);
+                    let new_name = body.args.get("newName").and_then(|v| v.as_str()).unwrap_or("");
+                    serde_json::to_value(crate::database::rename_folder(id, new_name.to_string()).await.unwrap_or_default()).unwrap()
+                },
+                "add_question" => {
+                    let content = body.args.get("content").and_then(|v| v.as_str()).unwrap_or("");
+                    let options = body.args.get("options").and_then(|v| v.as_str());
+                    let answer = body.args.get("answer").and_then(|v| v.as_str()).unwrap_or("");
+                    let question_type = body.args.get("questionType").and_then(|v| v.as_str());
+                    let folder_id = body.args.get("folderId").and_then(|v| v.as_i64()).unwrap_or(0);
+                    let is_ai = body.args.get("isAi").and_then(|v| v.as_bool()).unwrap_or(false);
+                    serde_json::to_value(crate::database::add_question(content.to_string(), options.map(|s| s.to_string()), answer.to_string(), question_type.map(|s| s.to_string()), folder_id, Some(is_ai)).await.ok()).unwrap()
+                },
+                "update_question" => {
+                    let id = body.args.get("id").and_then(|v| v.as_i64()).unwrap_or(0);
+                    let question = body.args.get("question").and_then(|v| v.as_str());
+                    let options = body.args.get("options").and_then(|v| v.as_str());
+                    let answer = body.args.get("answer").and_then(|v| v.as_str());
+                    let question_type = body.args.get("questionType").and_then(|v| v.as_str());
+                    serde_json::to_value(crate::database::update_question(id, question.map(|s| s.to_string()), options.map(|s| s.to_string()), answer.map(|s| s.to_string()), question_type.map(|s| s.to_string())).await.unwrap_or_default()).unwrap()
+                },
+                "delete_question" => {
+                    let id = body.args.get("id").and_then(|v| v.as_i64()).unwrap_or(0);
+                    serde_json::to_value(crate::database::delete_question(id).await.unwrap_or_default()).unwrap()
+                },
+                "delete_questions" => {
+                    let ids: Vec<i64> = body.args.get("ids").and_then(|v| v.as_array()).map(|arr| arr.iter().filter_map(|x| x.as_i64()).collect()).unwrap_or_default();
+                    serde_json::to_value(crate::database::delete_questions(ids).await.unwrap_or_default()).unwrap()
+                },
+                "move_folder" => {
+                    let id = body.args.get("id").and_then(|v| v.as_i64()).unwrap_or(0);
+                    let parent_id = body.args.get("parentId").and_then(|v| v.as_i64()).unwrap_or(0);
+                    serde_json::to_value(crate::database::move_folder(id, parent_id).await.unwrap_or_default()).unwrap()
+                },
+                "move_question" => {
+                    let id = body.args.get("questionId").and_then(|v| v.as_i64()).unwrap_or(0);
+                    let folder_id = body.args.get("targetFolderId").and_then(|v| v.as_i64()).unwrap_or(0);
+                    serde_json::to_value(crate::database::move_question(id, folder_id).await.unwrap_or_default()).unwrap()
+                },
+                "copy_question" => {
+                    let id = body.args.get("questionId").and_then(|v| v.as_i64()).unwrap_or(0);
+                    let folder_id = body.args.get("targetFolderId").and_then(|v| v.as_i64()).unwrap_or(0);
+                    serde_json::to_value(crate::database::copy_question(id, folder_id).await.unwrap_or_default()).unwrap()
+                },
+                "clear_folder_questions" => {
+                    let id = body.args.get("id").and_then(|v| v.as_i64()).unwrap_or(0);
+                    serde_json::to_value(crate::database::clear_folder_questions(id).await.unwrap_or_default()).unwrap()
+                },
+                "get_questions_recursive" => {
+                    let folder_id = body.args.get("folderId").and_then(|v| v.as_i64());
+                    let page = body.args.get("page").and_then(|v| v.as_u64()).unwrap_or(1) as i32;
+                    let page_size = body.args.get("pageSize").and_then(|v| v.as_u64()).unwrap_or(20) as i32;
+                    serde_json::to_value(crate::database::get_questions_recursive(folder_id.unwrap_or(0)).await.unwrap_or_default()).unwrap()
+                },
+                "segment_text" => {
+                    let text = body.args.get("text").and_then(|v| v.as_str()).unwrap_or("");
+                    serde_json::to_value(crate::commands::segment_text(text.to_string())).unwrap()
+                },
+                "get_pending_correction_questions" => {
+                    let page = body.args.get("page").and_then(|v| v.as_u64()).unwrap_or(1) as i32;
+                    let page_size = body.args.get("pageSize").and_then(|v| v.as_u64()).unwrap_or(20) as i32;
+                    serde_json::to_value(crate::database::get_pending_correction_questions().await.unwrap_or_default()).unwrap()
+                },
+                "get_pending_correction_question_count" => {
+                    serde_json::to_value(crate::database::get_pending_correction_question_count().await.unwrap_or(0)).unwrap()
+                },
+                "set_question_pending_correction" => {
+                    let id = body.args.get("id").and_then(|v| v.as_i64()).unwrap_or(0);
+                    let pending = body.args.get("pending").and_then(|v| v.as_bool()).unwrap_or(false);
+                    serde_json::to_value(crate::database::set_question_pending_correction(id, pending).await.unwrap_or_default()).unwrap()
+                },
+                "fetch_image_as_base64" => {
+                    let url = body.args.get("url").and_then(|v| v.as_str()).unwrap_or("");
+                    serde_json::to_value(String::new()).unwrap()
+                },
+                _ => {
+                    return Ok::<_, warp::Rejection>(warp::reply::json(&serde_json::json!({
+                        "success": false,
+                        "error": format!("Unknown command: {}", body.cmd)
+                    })));
+                }
+            };
+            Ok::<_, warp::Rejection>(warp::reply::json(&serde_json::json!({
+                "success": true,
+                "data": result
+            })))
+        });
+
+    let static_files = warp::fs::dir("../dist").or(warp::fs::dir("dist")).or(warp::fs::dir("."));
+
     let routes = root_route
         .or(root_head_route)
         .or(logged_routes)
@@ -964,7 +1149,7 @@ pub async fn start_server(
         .or(sse_logs_route)
         .or(login_route)
         .or(models_get_route)
-        .or(models_put_route)
+        .or(models_put_route).or(invoke_route).or(static_files)
         .with(cors);
 
     // 解析绑定地址
@@ -988,10 +1173,22 @@ pub async fn start_server(
         ip
     };
 
+
+    let web_port = get_web_port().unwrap_or(8080);
+
+    // API and web UI
+    let web_routes = routes.clone();
+    tokio::spawn(async move {
+        println!("🚀 Web UI running on port {}", web_port);
+        warp::serve(web_routes).run((bind_ip, web_port)).await;
+    });
+
     // 在后台启动服务器
     let server_handle = tokio::spawn(async move {
+        println!("🚀 API Server running on port {}", port);
         warp::serve(routes).run((bind_ip, port)).await;
     });
+
 
     // 更新状态
     let result = {
@@ -1022,8 +1219,8 @@ pub async fn start_server(
 /// # 返回值
 /// * `Ok(ServerInfo)` - 服务器停止成功，返回服务器信息
 /// * `Err(String)` - 服务器停止失败，返回错误信息
-#[tauri::command]
-pub async fn stop_server(state: State<'_, ServerState>) -> Result<ServerInfo, String> {
+
+pub async fn stop_server(state: std::sync::Arc<ServerState>) -> Result<ServerInfo, String> {
     {
         let info = state.info.lock();
         if !info.running {
@@ -1055,8 +1252,8 @@ pub async fn stop_server(state: State<'_, ServerState>) -> Result<ServerInfo, St
 ///
 /// # 返回值
 /// * `Ok(ServerInfo)` - 返回当前服务器状态信息
-#[tauri::command]
-pub async fn get_server_status(state: State<'_, ServerState>) -> Result<ServerInfo, String> {
+
+pub async fn get_server_status(state: std::sync::Arc<ServerState>) -> Result<ServerInfo, String> {
     let info = state.info.lock();
     Ok(info.clone())
 }

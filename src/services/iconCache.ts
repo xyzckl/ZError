@@ -99,7 +99,7 @@ const fetchIconResponse = async (url: string): Promise<Response> => {
 
   if (isTauri) {
     try {
-      const { fetch: tauriFetch } = await import('@tauri-apps/plugin-http')
+      const tauriFetch = fetch
       return await tauriFetch(url, { method: 'GET' }) as Response
     } catch (error) {
       console.warn('使用 Tauri HTTP 获取远程平台图标失败，回退到浏览器 fetch:', error)

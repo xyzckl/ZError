@@ -27,7 +27,7 @@ export class VersionCheckService {
 
       if (environmentDetector.isTauriEnvironment()) {
         // 在 Tauri 环境中使用 HTTP 插件
-        const { fetch: tauriFetch } = await import('@tauri-apps/plugin-http');
+        const tauriFetch = fetch;
         response = await tauriFetch(VersionCheckService.API_URL);
       } else {
         // 在浏览器环境中使用 fetch

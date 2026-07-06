@@ -142,7 +142,7 @@ class SettingsManager {
   private async loadFromFile(): Promise<void> {
     if (!environmentDetector.isTauriEnvironment(true)) return
     try {
-      const { invoke } = await import('@tauri-apps/api/core')
+      const { invoke } = await import('../utils/invoke')
       const content = await invoke<string>('read_config')
       if (content) {
         const parsed = { ...(JSON.parse(content) || {}) }
@@ -169,7 +169,7 @@ class SettingsManager {
     }
     // 异步写入配置文件
     if (environmentDetector.isTauriEnvironment(true)) {
-      import('@tauri-apps/api/core').then(({ invoke }) => {
+      import('../utils/invoke').then(({ invoke }) => {
         invoke('write_config', { content: JSON.stringify(this.settings, null, 2) })
           .catch(e => console.warn('写入配置文件失败:', e))
       })

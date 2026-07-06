@@ -327,7 +327,7 @@ const loadRequestLogs = async () => {
   requestStatsError.value = ''
 
   try {
-    const { invoke } = await import('@tauri-apps/api/core')
+    const { invoke } = await import('../../utils/invoke')
     // 后端返回 [["2026-03-31", 5], ["2026-04-01", 3], ...]
     const rows = await invoke<[string, number][]>('get_daily_request_counts')
     const map = new Map<string, number>()
@@ -748,7 +748,7 @@ const handleWeekLater = () => {
 const openDebugPanel = async () => {
   try {
     if (environmentDetector.isTauriEnvironment()) {
-      const { invoke } = await import('@tauri-apps/api/core')
+      const { invoke } = await import('../../utils/invoke')
       await invoke('open_devtools')
       console.log('开发者工具已打开')
     } else {

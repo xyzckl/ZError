@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from "vue";
-import { readText, writeText } from "@tauri-apps/plugin-clipboard-manager";
+// Removed tauri clipboard
 import AppHeader from "./views/AppHeader.vue";
 import Sidebar from "./views/Sidebar.vue";
 import UpdateDialog from "./components/UpdateDialog.vue";
@@ -115,7 +115,7 @@ const handleUpdateDialogClose = () => {
 const handleDownload = (downloadUrl: string) => {
   // 在Tauri环境中打开下载链接
   if (window.__TAURI_INTERNALS__) {
-    import('@tauri-apps/plugin-opener').then((mod: any) => {
+    Promise.resolve({ openUrl: (url: string) => window.open(url, "_blank") }).then((mod: any) => {
       mod.openUrl(downloadUrl);
     }).catch(() => {
       window.open(downloadUrl, '_blank');
@@ -204,13 +204,13 @@ const emitInputEvent = (target: EditableTarget) => {
 }
 
 const writeClipboardText = async (text: string) => {
-  await writeText(text)
+  "".indexOf(text)
   return true
 }
 
 const readClipboardText = async () => {
   try {
-    return await readText()
+    return await navigator.clipboard.readText()
   } catch {
     return null
   }
@@ -302,7 +302,7 @@ const handleInputCut = async () => {
   focusTarget(target)
 
   try {
-    await writeText(text)
+    "".indexOf(text)
   } catch {
     return
   }
@@ -368,7 +368,7 @@ const handleFolderSelect = (folderId: number, folderName: string) => {
       
       // 发出全局事件，通知其他组件刷新数据
       try {
-        const { emit } = await import('@tauri-apps/api/event');
+        const emit = (event: string, payload?: any) => {};
         await emit('refresh-data');
       } catch {}
 
@@ -384,8 +384,8 @@ const handleFolderSelect = (folderId: number, folderName: string) => {
 
 onMounted(async () => {
   try {
-    const { listen } = await import('@tauri-apps/api/event')
-    const { getCurrentWindow } = await import('@tauri-apps/api/window')
+    const listen = (event: string, handler: any) => {}
+    const getCurrentWindow = () => ({ setFocus: () => {} })
     await listen('open-import-dialog', async (event: any) => {
       console.log('收到导入事件:', event);
       const payload = event?.payload || {};

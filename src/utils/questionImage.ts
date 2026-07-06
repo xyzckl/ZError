@@ -448,7 +448,7 @@ const darkModeInvertMinDarkRatio = 0.6
 export const fetchQuestionImageBase64 = async (url: string): Promise<string> => {
   try {
     if (!tauriInvoke) {
-      const core = await import('@tauri-apps/api/core')
+      const core = await import('./invoke')
       tauriInvoke = core.invoke
     }
     return await tauriInvoke<string>('fetch_image_as_base64', { url })

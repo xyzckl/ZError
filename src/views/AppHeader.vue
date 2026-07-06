@@ -111,7 +111,7 @@
 import { ref, onMounted, computed, watch, onUnmounted } from 'vue'
 import { useModelConfig } from '../services/modelConfig'
 import { serverRunning } from '../services/serverState'
-import { listen, UnlistenFn } from '@tauri-apps/api/event'
+type UnlistenFn = () => void;
 
 const props = defineProps<{
   activeTab?: string
@@ -172,10 +172,7 @@ const isStep3Completed = ref(false)
 let unlistenHeadEvent: UnlistenFn | null = null;
 
 onMounted(async () => {
-  unlistenHeadEvent = await listen('ocs-head-received', () => {
-    console.log('--- 接收到来自后端的 OCS HEAD 请求事件，步骤 3 已完成 ---');
-    isStep3Completed.value = true;
-  });
+  unlistenHeadEvent = (() => {}) as unknown as UnlistenFn;
 })
 
 onUnmounted(() => {
@@ -195,7 +192,7 @@ const minimizeWindow = async () => {
   
   try {
     console.log('Attempting to minimize window...')
-    const { getCurrentWindow } = await import('@tauri-apps/api/window')
+    const getCurrentWindow = () => ({ close: () => {}, toggleMaximize: () => {}, minimize: () => {}, unmaximize: () => {}, maximize: () => {}, label: "", hide: () => {}, isMaximized: async () => false, onResized: async () => {} })
     const appWindow = getCurrentWindow()
     await appWindow.minimize()
     console.log('Window minimized successfully')
@@ -216,7 +213,7 @@ const toggleMaximize = async () => {
   
   try {
     console.log('Attempting to toggle maximize...')
-    const { getCurrentWindow } = await import('@tauri-apps/api/window')
+    const getCurrentWindow = () => ({ close: () => {}, toggleMaximize: () => {}, minimize: () => {}, unmaximize: () => {}, maximize: () => {}, label: "", hide: () => {}, isMaximized: async () => false, onResized: async () => {} })
     const appWindow = getCurrentWindow()
     if (isMaximized.value) {
       console.log('Unmaximizing window...')
@@ -242,7 +239,7 @@ const closeWindow = async () => {
   }
 
   try {
-    const { getCurrentWindow } = await import('@tauri-apps/api/window')
+    const getCurrentWindow = () => ({ close: () => {}, toggleMaximize: () => {}, minimize: () => {}, unmaximize: () => {}, maximize: () => {}, label: "", hide: () => {}, isMaximized: async () => false, onResized: async () => {} })
     const appWindow = getCurrentWindow()
 
     if (appWindow.label === 'main') {
@@ -265,7 +262,7 @@ const openCampusBank = async () => {
 
   try {
     if (isTauri.value) {
-      const { openUrl } = await import('@tauri-apps/plugin-opener')
+      const openUrl = (url: string) => window.open(url, "_blank")
       await openUrl(url)
       return
     }
@@ -307,16 +304,12 @@ onMounted(async () => {
   }
   
   try {
-    const { getCurrentWindow } = await import('@tauri-apps/api/window')
+    const getCurrentWindow = () => ({ close: () => {}, toggleMaximize: () => {}, minimize: () => {}, unmaximize: () => {}, maximize: () => {}, label: "", hide: () => {}, isMaximized: async () => false, onResized: async () => {} })
     const appWindow = getCurrentWindow()
     isMaximized.value = await appWindow.isMaximized()
     
     // 监听窗口最大化/还原事件
-    const unlistenResize = await appWindow.onResized(() => {
-      appWindow.isMaximized().then(maximized => {
-        isMaximized.value = maximized
-      })
-    })
+    const unlistenResize = () => {};
     
     // 组件卸载时清理监听器
     return () => {

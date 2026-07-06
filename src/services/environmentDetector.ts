@@ -23,28 +23,8 @@ export class EnvironmentDetector {
    * @param enableLogging 是否启用日志输出，默认为 false
    */
   public isTauriEnvironment(enableLogging: boolean = false): boolean {
-    // 如果已经检测过，直接返回缓存结果
-    if (this._isTauriEnvironment !== null) {
-      return this._isTauriEnvironment;
-    }
-
-    if (typeof window === 'undefined') {
-      this._isTauriEnvironment = false;
-      return false;
-    }
-    
-    // 检查 Tauri 相关的全局对象
-    const hasTauri = typeof window !== 'undefined' && window.__TAURI__;
-    const hasTauriInternals = typeof window !== 'undefined' && window.__TAURI_INTERNALS__;
-    
-    if (enableLogging) {
-      console.log('Tauri环境检测:');
-      console.log('- window.__TAURI__:', hasTauri);
-      console.log('- window.__TAURI_INTERNALS__:', hasTauriInternals);
-    }
-    
-    this._isTauriEnvironment = hasTauri || hasTauriInternals;
-    return this._isTauriEnvironment;
+    // 强制返回false，因为我们已经重构为纯Web环境
+    return false;
   }
 
   /**

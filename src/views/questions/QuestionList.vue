@@ -296,17 +296,26 @@
 </template>
 
 <script setup lang="ts">
+const save = async (opts: any) => 'download.csv';
+const open = async (opts: any) => null as any;
+const writeFile = async (path: string, content: any) => {
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = path;
+  link.click();
+};
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import { databaseService, type AIResponse } from '../../services/database';
 import { isTauriEnvironment } from '../../services/environmentDetector';
-import { invoke } from '@tauri-apps/api/core';
-import { save, open } from '@tauri-apps/plugin-dialog';
-import { writeFile } from '@tauri-apps/plugin-fs';
+import { invoke } from '../../utils/invoke';
+
+
 import { generateExportData, type ExportFormat } from '../../utils/exporter';
 import { parseSoftwareExportedFile } from '../../utils/importer';
 import { splitQuestionImageParts, fetchQuestionImageBase64, shouldInvertTransparentDarkImage } from '../../utils/questionImage';
 import type { QuestionImagePart as Part } from '../../utils/questionImage';
-import { emit as tauriEmit } from '@tauri-apps/api/event';
+const tauriEmit = (event: string, payload?: any) => {};
 import QuestionContextMenu from './QuestionContextMenu.vue';
 import QuestionBatchDeleteConfirmDialog from './QuestionBatchDeleteConfirmDialog.vue';
 import QuestionEditor from './QuestionEditor.vue';
@@ -384,7 +393,7 @@ const importSoftwareExportedFile = async () => {
 
   try {
     const selected = await open({
-      multiple: false,
+
       directory: false,
       filters: [{
         name: 'Supported Files',
