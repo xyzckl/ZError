@@ -24,6 +24,8 @@ ZError Web 是一款专为OCS网课助手设计的AI题库软件。
 
 这个版本（Linux Web版）彻底移除了原有 Windows 平台的相关介绍和界面依赖。通过 Web 端管理取代了传统的桌面端 UI，赋予项目全新的服务器端定位，旨在打造一款轻量、高效、全天候响应的AI题库后端。
 
+原 Windows 版本项目地址：[https://github.com/Miaozeqiu/ZError](https://github.com/Miaozeqiu/ZError)
+
 ## 系统要求
 
 - Linux 无头服务器环境（支持 Systemd）
