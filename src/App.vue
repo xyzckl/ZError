@@ -16,6 +16,33 @@ import type { VersionInfo } from "./services/versionCheck";
 
 // 当前活跃的页面
 const activeTab = ref('home');
+
+
+const isWebMode = !((window as any).__TAURI_INTERNALS__);
+const showLogin = ref(isWebMode && !localStorage.getItem('token'));
+const password = ref('');
+const loginError = ref('');
+
+const handleLogin = async () => {
+  try {
+    const response = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: password.value })
+    });
+    const result = await response.json();
+    if (result.success) {
+      localStorage.setItem('token', result.token);
+      showLogin.value = false;
+      window.location.reload();
+    } else {
+      loginError.value = result.message || 'Login failed';
+    }
+  } catch (e) {
+    loginError.value = String(e);
+  }
+};
+
 // 顶层 tab 切换时用于触发各视图折叠的触发器
 const collapseTrigger = ref(0);
 const questionBankFocusFolderId = ref<number | null>(null);
@@ -439,6 +466,23 @@ onUnmounted(() => {
 </script>
 
 <template>
+
+  <div v-if="showLogin" class="modal" style="z-index: 10000;">
+    <div class="modal-content" style="width: 400px; z-index: 10000;">
+      <div class="modal-header">
+        <span>Web 面板登录</span>
+      </div>
+      <div class="modal-body" style="padding: 20px; display: flex; flex-direction: column; gap: 10px;">
+        <label>请输入管理员密码：</label>
+        <input type="password" v-model="password" @keyup.enter="handleLogin" placeholder="Admin Password" />
+        <span v-if="loginError" style="color: red;">{{ loginError }}</span>
+      </div>
+      <div class="modal-footer">
+        <button @click="handleLogin" style="width: 100%;">登录</button>
+      </div>
+    </div>
+  </div>
+
   <div class="app-container">
     <!-- 自定义Header -->
     <AppHeader :active-tab="activeTab" @guide-to="handleGuideAction" />

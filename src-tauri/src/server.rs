@@ -7,6 +7,7 @@ use futures_util::StreamExt;
 use regex::Regex;
 use serde_json::Value;
 use std::collections::HashMap;
+#[cfg(feature = "tauri")]
 use tauri::{Emitter, State};
 use tokio_stream::wrappers::BroadcastStream;
 use uuid;
@@ -200,7 +201,8 @@ fn build_model_query_prompt(
 }
 
 /// 启动HTTP服务器
-#[tauri::command]
+#[cfg(feature = "tauri")]
+#[cfg_attr(feature = "tauri", tauri::command)]
 pub async fn start_server(
     port: u16,
     bind_address: String,
@@ -1022,7 +1024,8 @@ pub async fn start_server(
 /// # 返回值
 /// * `Ok(ServerInfo)` - 服务器停止成功，返回服务器信息
 /// * `Err(String)` - 服务器停止失败，返回错误信息
-#[tauri::command]
+#[cfg(feature = "tauri")]
+#[cfg_attr(feature = "tauri", tauri::command)]
 pub async fn stop_server(state: State<'_, ServerState>) -> Result<ServerInfo, String> {
     {
         let info = state.info.lock();
@@ -1055,7 +1058,8 @@ pub async fn stop_server(state: State<'_, ServerState>) -> Result<ServerInfo, St
 ///
 /// # 返回值
 /// * `Ok(ServerInfo)` - 返回当前服务器状态信息
-#[tauri::command]
+#[cfg(feature = "tauri")]
+#[cfg_attr(feature = "tauri", tauri::command)]
 pub async fn get_server_status(state: State<'_, ServerState>) -> Result<ServerInfo, String> {
     let info = state.info.lock();
     Ok(info.clone())
@@ -1261,4 +1265,198 @@ fn is_model_error(text: &str) -> Option<String> {
     }
 
     None
+}
+
+
+
+// Authentication token verification logic
+fn verify_token(token: &str) -> bool {
+    let config_path = {
+        let home_dir = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
+        let base_dir = format!("{}/.local/share/zerror", home_dir);
+        std::path::PathBuf::from(base_dir).join("config.json")
+    };
+    let config_str = std::fs::read_to_string(&config_path).unwrap_or_default();
+    let config: serde_json::Value = serde_json::from_str(&config_str).unwrap_or_default();
+    let admin_token = config.get("adminToken").and_then(|v| v.as_str()).unwrap_or("");
+
+    // If no admin token is set, allow access
+    if admin_token.is_empty() {
+        return true;
+    }
+
+    token == admin_token
+}
+
+fn with_auth() -> impl warp::Filter<Extract = (), Error = warp::Rejection> + Clone {
+    warp::header::optional::<String>("authorization")
+        .and_then(|auth_header: Option<String>| async move {
+            let token = auth_header
+                .and_then(|h| h.strip_prefix("Bearer ").map(String::from))
+                .unwrap_or_default();
+
+            if verify_token(&token) {
+                Ok(())
+            } else {
+                Err(warp::reject::custom(AuthError))
+            }
+        })
+        .untuple_one()
+}
+
+#[derive(Debug)]
+struct AuthError;
+impl warp::reject::Reject for AuthError {}
+
+pub async fn start_server_headless(
+    port: u16,
+    bind_address: String,
+    state: std::sync::Arc<ServerState>,
+) -> Result<ServerInfo, String> {
+
+    let root_route = warp::path::end()
+        .and(warp::get())
+        .map(|| warp::reply::html(crate::server::QUERY_TEST_PAGE_HTML));
+
+    let root_head_route = warp::path::end()
+        .and(warp::head())
+        .map(move || {
+            warp::reply::with_header("Hello,OCS", "content-type", "text/plain")
+        });
+
+    let cors = warp::cors()
+        .allow_any_origin()
+        .allow_headers(vec!["content-type", "authorization"])
+        .allow_methods(vec!["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"]);
+
+    let dist_dir = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|d| d.to_path_buf()))
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
+        .join("dist");
+
+    let static_route = warp::fs::dir(dist_dir.clone());
+    let index_route = warp::any().and(warp::fs::file(dist_dir.join("index.html")));
+    let web_ui_routes = static_route.or(index_route);
+
+    let state_for_invoke = state.clone();
+    let invoke_route = warp::path("api")
+        .and(warp::path("invoke"))
+        .and(warp::post())
+        .and(with_auth())
+        .and(warp::body::json())
+        .and_then(move |body: serde_json::Value| {
+            let state = state_for_invoke.clone();
+            async move {
+                let cmd = body.get("cmd").and_then(|v| v.as_str()).unwrap_or("");
+                let default_args = serde_json::json!({});
+                let args = body.get("args").unwrap_or(&default_args);
+
+                let mut data = serde_json::Value::Null;
+                let mut error: Option<String> = None;
+
+                match cmd {
+                    "get_folders" => match crate::database::get_folders().await {
+                        Ok(res) => data = serde_json::to_value(res).unwrap_or_default(),
+                        Err(e) => error = Some(e),
+                    },
+                    "get_ai_responses" => {
+                        let folder_id = args.get("folderId").and_then(|v| v.as_i64());
+                        match crate::database::get_ai_responses(folder_id).await {
+                            Ok(res) => data = serde_json::to_value(res).unwrap_or_default(),
+                            Err(e) => error = Some(e),
+                        }
+                    },
+                    "get_paginated_questions" => {
+                        let folder_id = args.get("folderId").and_then(|v| v.as_i64());
+                        let page = args.get("page").and_then(|v| v.as_u64()).unwrap_or(1) as i64;
+                        let page_size = args.get("pageSize").and_then(|v| v.as_u64()).unwrap_or(20) as i64;
+                        match crate::database::get_paginated_questions(folder_id, false, page, page_size, None).await {
+                            Ok(res) => data = serde_json::to_value(res).unwrap_or_default(),
+                            Err(e) => error = Some(e),
+                        }
+                    },
+                    "get_folder_stats" => match crate::database::get_folder_stats().await {
+                        Ok(res) => data = serde_json::to_value(res).unwrap_or_default(),
+                        Err(e) => error = Some(e),
+                    },
+                    "get_daily_request_counts" => match crate::database::get_daily_request_counts() {
+                        Ok(res) => data = serde_json::to_value(res).unwrap_or_default(),
+                        Err(e) => error = Some(e),
+                    },
+                    "get_server_status" => match {
+                        let info = state.info.lock();
+                        Ok(info.clone()) as Result<crate::types::ServerInfo, String>
+                    } {
+                        Ok(res) => data = serde_json::to_value(res).unwrap_or_default(),
+                        Err(e) => error = Some(e),
+                    },
+                    "open_cache_dir" | "open_devtools" | "get_request_logs" | "clear_request_logs" => {
+                        data = serde_json::Value::Null;
+                    },
+                    _ => {
+                        error = Some(format!("Command {} not supported in web mode", cmd));
+                    }
+                }
+
+                let resp = if let Some(e) = error {
+                    serde_json::json!({"success": false, "error": e})
+                } else {
+                    serde_json::json!({"success": true, "data": data})
+                };
+
+                Ok::<_, warp::Rejection>(warp::reply::json(&resp))
+            }
+        });
+
+    let login_route = warp::path("api")
+        .and(warp::path("login"))
+        .and(warp::post())
+        .and(warp::body::json())
+        .and_then(move |body: serde_json::Value| async move {
+            let token = body
+                .get("token")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+
+            if verify_token(&token) {
+                let resp = serde_json::json!({"success": true, "role": "admin", "name": "管理员", "token": token});
+                Ok::<_, warp::Rejection>(warp::reply::json(&resp))
+            } else {
+                let resp = serde_json::json!({"success": false, "message": "无效的token"});
+                Ok::<_, warp::Rejection>(warp::reply::json(&resp))
+            }
+        });
+
+    let routes = invoke_route
+        .or(login_route)
+        .or(root_route)
+        .or(root_head_route)
+        .or(web_ui_routes)
+        .with(cors);
+
+    let bind_ip: [u8; 4] = if bind_address == "0.0.0.0" {
+        [0, 0, 0, 0]
+    } else if bind_address == "127.0.0.1" {
+        [127, 0, 0, 1]
+    } else {
+        [0, 0, 0, 0] // fallback
+    };
+
+    let server_handle = tokio::spawn(async move {
+        warp::serve(routes).run((bind_ip, port)).await;
+    });
+
+    let result = {
+        let mut info = state.info.lock();
+        info.running = true;
+        info.port = Some(port);
+        let url_host = if bind_address == "0.0.0.0" { "localhost".to_string() } else { bind_address };
+        info.url = Some(format!("http://{}:{}", url_host, port));
+        info.clone()
+    };
+
+    *state.handle.lock() = Some(server_handle);
+    Ok(result)
 }
