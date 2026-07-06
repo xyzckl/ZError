@@ -26,8 +26,6 @@ use uuid;
 use warp::http::HeaderMap;
 use warp::Filter;
 
-const QUERY_TEST_PAGE_HTML: &str = include_str!("query_test_page.html");
-
 /// 验证管理员 token（从 Authorization: Bearer <token> 或直接值中提取）
 fn check_admin_token(auth: &Option<String>) -> bool {
     let token = match auth {
@@ -811,10 +809,6 @@ pub async fn start_server(
             warp::sse::reply(stream)
         });
 
-    let root_route = warp::path::end()
-        .and(warp::get())
-        .map(|| warp::reply::html(QUERY_TEST_PAGE_HTML));
-
     // 根路由的HEAD方法
     let app_handle_clone = state.app_handle.clone();
     let root_head_route = warp::path::end()
@@ -1139,8 +1133,7 @@ let invoke_route = warp::path!("api" / "invoke")
 
     let static_files = warp::fs::dir("../dist").or(warp::fs::dir("dist")).or(warp::fs::dir("."));
 
-    let routes = root_route
-        .or(root_head_route)
+    let routes = root_head_route
         .or(logged_routes)
         .or(query_route)
         .or(mark_pending_correction_route)
