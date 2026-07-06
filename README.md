@@ -34,17 +34,146 @@ ZError Web 是一款专为OCS网课助手设计的AI题库软件。
 
 ## 安装方法
 
-我们提供了一键安装脚本，运行脚本即可完成部署和配置：
+这份指南专为 **Linux Headless（无图形界面）服务器**量身定制。教程摒弃了固定的版本标签，采用 GitHub 官方的动态重定向机制，确保每次部署或更新时都能**直接抓取到项目仓库的最新发布版本（Latest Release）**。
+
+---
+
+## 📑 部署前置准备
+
+在纯命令行服务器上运行该程序，需要先补齐底层图形链接库，并清理网络通道。
+
+### 1. 安装基础运行时依赖
+
+即使程序以无窗口模式运行，其底层框架依然依赖以下轻量级动态库，请先在服务器执行安装：
 
 ```bash
-chmod +x install.sh
-./install.sh
+sudo apt update && sudo apt install -y libgtk-3-0 libwebkit2gtk-4.1-0 psmisc
+
 ```
 
-在安装过程中：
-1. 您需要选择Web管理面板的端口（不能为80端口）。
-2. 80端口默认预留为OCS答案回传端口。
-3. 安装完成后，脚本会自动配置并启动 Systemd 服务，确保题库软件能在服务器上全天候运行。
+> *(注：`psmisc` 工具包中包含 `fuser` 命令，用于后续一键清理端口占用)*
+
+### 2. 云服务器防火墙放行
+
+请前往你的云服务商控制台，在防火墙入站规则中放行以下两个端口：
+
+* **`8080` 端口** (TCP)：用于访问 Web UI 网页前端。
+* **`80` 端口** (TCP)：用于后端 API 服务器通信。
+
+---
+
+## 🚀 核心部署步骤
+
+### 第一步：一键获取最新版二进制文件
+
+创建专属工作目录，并利用 GitHub 提供的 `releases/latest/download` 动态接口，直接下载最新发布的免安装文件：
+
+```bash
+# 1. 创建并进入干净的工作目录
+mkdir -p ~/zerror_app && cd ~/zerror_app
+
+# 2. 拉取最新发布的 zerror 核心文件
+wget https://github.com/xyzckl/ZError/releases/latest/download/zerror
+
+# 3. 赋予该文件最高可执行权限
+chmod +x zerror
+
+```
+
+### 第二步：一键强制释放冲突端口
+
+为了防止旧进程或其他服务（如 Nginx、旧版服务）强占 `8080` 和 `80` 端口导致程序初始化崩溃，在启动前执行“物理清理”：
+
+```bash
+# 强行终止任何正在占用 8080 和 80 端口的进程
+sudo fuser -k 8080/tcp 80/tcp 2>/dev/null
+
+```
+
+### 第三步：配置 Systemd 守护进程（长期后台运行）
+
+在 1GB 内存的轻量级服务器上，使用系统自带的 `systemd` 来托管程序是最省资源、最稳定的生产环境方案。
+
+运行以下命令创建服务配置文件：
+
+```bash
+sudo nano /etc/systemd/system/zerror.service
+
+```
+
+将以下标准配置粘贴进去（**请根据你的实际用户名修改其中的路径**，当前默认用户名为 `xyzck`）：
+
+```ini
+[Unit]
+Description=ZError Web Service (Automated Release)
+After=network.target
+
+[Service]
+Type=simple
+# 必须使用 root 用户启动以允许绑定特权端口 80
+User=root
+WorkingDirectory=/home/xyzck/zerror_app
+ExecStart=/home/xyzck/zerror_app/zerror --web-port 8080
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target
+
+```
+
+*粘贴完成后，按 `Ctrl + O` 然后回车保存，再按 `Ctrl + X` 退出编辑器。*
+
+---
+
+## 🛠️ 服务启动与维护
+
+配置文件就绪后，通过以下组合拳让程序正式挂载并在后台永久燃烧：
+
+```bash
+# 1. 刷新系统服务列表
+sudo systemctl daemon-reload
+
+# 2. 启动服务并将其设置为开机自动启动
+sudo systemctl start zerror
+sudo systemctl enable zerror
+
+```
+
+### 🔍 运行状态与日志监控
+
+* **检查程序是否成功存活**：
+```bash
+sudo systemctl status zerror
+
+```
+
+
+如果看到绿色的 **`active (running)`**，说明 AI 提交的代码已成功在你的服务器上安家落地。
+* **实时跟踪程序后端日志（排错神器）**：
+```bash
+journalctl -u zerror.service -f -n 50
+
+```
+
+
+
+---
+
+## 🔄 日常维护：如何更新到最新版？
+
+未来如果再次提交了新代码并发布了新版本，你**不需要**重写配置文件，只需在服务器上执行以下三行命令，即可秒级完成平滑更新：
+
+```bash
+cd ~/zerror_app
+# 1. 停止当前运行的服务
+sudo systemctl stop zerror
+# 2. 重新拉取最新覆盖下载，并补上执行权限
+wget -O zerror https://github.com/xyzckl/ZError/releases/latest/download/zerror && chmod +x zerror
+# 3. 重新启动服务
+sudo systemctl start zerror
+
+```
 
 ## 许可证
 
