@@ -67,7 +67,7 @@ sudo apt update && sudo apt install -y libgtk-3-0 libwebkit2gtk-4.1-0 psmisc
 mkdir -p ~/zerror_app && cd ~/zerror_app
 
 # 2. 拉取最新发布的完整运行包
-wget [https://github.com/xyzckl/ZError/releases/latest/download/zerror-linux-x64.tar.gz](https://github.com/xyzckl/ZError/releases/latest/download/zerror-linux-x64.tar.gz)
+wget https://github.com/xyzckl/ZError/releases/latest/download/zerror-linux-x64.tar.gz
 
 # 3. 解压压缩包里的全部内容并清理多余临时文件
 tar -xzf zerror-linux-x64.tar.gz && rm zerror-linux-x64.tar.gz
@@ -169,7 +169,7 @@ cd ~/zerror_app
 sudo systemctl stop zerror
 
 # 2. 重新拉取最新的运行包
-wget [https://github.com/xyzckl/ZError/releases/latest/download/zerror-linux-x64.tar.gz](https://github.com/xyzckl/ZError/releases/latest/download/zerror-linux-x64.tar.gz)
+wget https://github.com/xyzckl/ZError/releases/latest/download/zerror-linux-x64.tar.gz
 
 # 3. 覆盖解压并清理压缩包
 tar -xzf zerror-linux-x64.tar.gz && rm zerror-linux-x64.tar.gz
