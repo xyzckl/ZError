@@ -961,7 +961,7 @@ fn get_exe_dir() -> std::path::PathBuf {
 
 /// 获取配置文件路径（exe 同级目录下的 config.json）
 fn get_config_path() -> std::path::PathBuf {
-    get_exe_dir().join("config.json")
+    get_exe_dir().join("config").join("config.json")
 }
 
 /// 读取配置文件
@@ -985,7 +985,7 @@ pub fn write_config(content: String) -> Result<(), String> {
 /// 读取模型配置文件
 #[tauri::command]
 pub fn read_model_config() -> Result<String, String> {
-    let path = get_exe_dir().join("model_config.json");
+    let path = get_exe_dir().join("config").join("model_config.json");
     if path.exists() {
         std::fs::read_to_string(&path).map_err(|e| e.to_string())
     } else {
@@ -996,7 +996,7 @@ pub fn read_model_config() -> Result<String, String> {
 /// 写入模型配置文件
 #[tauri::command]
 pub fn write_model_config(content: String) -> Result<(), String> {
-    let path = get_exe_dir().join("model_config.json");
+    let path = get_exe_dir().join("config").join("model_config.json");
     std::fs::write(&path, content).map_err(|e| e.to_string())
 }
 

@@ -13,6 +13,10 @@ import { initializationService } from "./services/initialization";
 import { initGlobalTheme } from "./composables/useTheme";
 import { VersionCheckService } from "./services/versionCheck";
 import type { VersionInfo } from "./services/versionCheck";
+import { invoke } from "./utils/invoke";
+import { settingsManager, useSettings } from "./services/settings";
+
+const { settings } = useSettings();
 
 // 当前活跃的页面
 const activeTab = ref('home');
@@ -411,8 +415,81 @@ onMounted(async () => {
   window.addEventListener('blur', hideInputContextMenu)
 });
 
-// 应用初始化
-onMounted(async () => {
+// 登录状态
+const isLoggedIn = ref(false);
+const isDefaultPassword = ref(false);
+const loginUsername = ref('');
+const loginPassword = ref('');
+const loginError = ref('');
+const loginLoading = ref(false);
+
+const handleLogin = async () => {
+  loginError.value = '';
+  if (loginUsername.value !== 'xyzckl') {
+    loginError.value = '用户名不正确';
+    return;
+  }
+  if (!loginPassword.value) {
+    loginError.value = '密码不能为空';
+    return;
+  }
+
+  loginLoading.value = true;
+  try {
+    const response = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: loginPassword.value })
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data.success) {
+        settings.adminToken = loginPassword.value;
+        settingsManager.save();
+        isLoggedIn.value = true;
+        isDefaultPassword.value = (loginPassword.value === 'admin');
+        // 初始化应用数据
+        await initApplication();
+      } else {
+        loginError.value = data.message || '密码不正确';
+      }
+    } else {
+      loginError.value = '登录请求失败';
+    }
+  } catch (error) {
+    console.error('登录异常:', error);
+    loginError.value = '网络或服务器错误';
+  } finally {
+    loginLoading.value = false;
+  }
+};
+
+const checkSavedLogin = async () => {
+  if (settings.adminToken) {
+    try {
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: settings.adminToken })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          isLoggedIn.value = true;
+          isDefaultPassword.value = (settings.adminToken === 'admin');
+          await initApplication();
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('验证保存的登录状态失败', e);
+    }
+  }
+  // 如果未登录或验证失败，显示登录界面
+};
+
+const initApplication = async () => {
   try {
     console.log('开始应用初始化...');
     await initGlobalTheme();
@@ -424,6 +501,11 @@ onMounted(async () => {
   } catch (error) {
     console.error('应用初始化失败:', error);
   }
+};
+
+// 应用初始化
+onMounted(async () => {
+  await checkSavedLogin();
 });
 
 onUnmounted(() => {
@@ -439,7 +521,36 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="app-container">
+  <div v-if="!isLoggedIn" class="login-container">
+    <div class="login-box">
+      <div class="login-header">
+        <img src="/vite.svg" class="login-logo" alt="logo" />
+        <h2>ZError - Web控制面板</h2>
+        <p>请输入用户名和密码登录</p>
+      </div>
+      <form @submit.prevent="handleLogin" class="login-form">
+        <div class="form-group">
+          <label for="username">用户名</label>
+          <input id="username" type="text" v-model="loginUsername" placeholder="请输入用户名" required />
+        </div>
+        <div class="form-group">
+          <label for="password">密码</label>
+          <input id="password" type="password" v-model="loginPassword" placeholder="请输入密码" required />
+        </div>
+        <div v-if="loginError" class="login-error">{{ loginError }}</div>
+        <button type="submit" class="login-button" :disabled="loginLoading">
+          {{ loginLoading ? '登录中...' : '登 录' }}
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div v-else class="app-container">
+    <!-- 警告横幅 -->
+    <div v-if="isDefaultPassword" class="password-warning-banner">
+      ⚠️ 当前使用的是默认管理员密码，为保证安全，请尽快在设置或配置文件中修改密码！
+    </div>
+
     <!-- 自定义Header -->
     <AppHeader :active-tab="activeTab" @guide-to="handleGuideAction" />
 
@@ -525,6 +636,130 @@ onUnmounted(() => {
 
 .logo.vue:hover {
   filter: drop-shadow(0 0 2em #249b73);
+}
+
+/* 登录页面样式 */
+.login-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background-color: var(--bg-tertiary, #f4f4f4);
+}
+
+.login-box {
+  background: var(--bg-primary, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  padding: 40px;
+  width: 100%;
+  max-width: 400px;
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.login-logo {
+  height: 60px;
+  margin-bottom: 15px;
+}
+
+.login-header h2 {
+  margin: 0 0 10px;
+  color: var(--text-primary, #2d3748);
+  font-size: 24px;
+}
+
+.login-header p {
+  margin: 0;
+  color: var(--text-secondary, #718096);
+  font-size: 14px;
+}
+
+.login-form .form-group {
+  margin-bottom: 20px;
+}
+
+.login-form label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text-primary, #4a5568);
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+}
+
+.login-form input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color, #cbd5e0);
+  border-radius: 6px;
+  font-size: 14px;
+  background: var(--bg-secondary, #f8fafc);
+  color: var(--text-primary, #2d3748);
+  transition: border-color 0.2s;
+}
+
+.login-form input:focus {
+  border-color: var(--color-primary, #3182ce);
+  outline: none;
+}
+
+.login-error {
+  color: #e53e3e;
+  font-size: 13px;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.login-button {
+  width: 100%;
+  padding: 12px;
+  background: var(--color-primary, #3182ce);
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.login-button:hover:not(:disabled) {
+  background: var(--color-primary-dark, #2b6cb0);
+}
+
+.login-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+@media (prefers-color-scheme: dark) {
+  .login-container {
+    background-color: var(--bg-tertiary, #1a202c);
+  }
+  .login-box {
+    background: var(--bg-primary, #2d3748);
+    border-color: var(--border-color, #4a5568);
+  }
+  .login-header h2 {
+    color: var(--text-primary, #f7fafc);
+  }
+  .login-header p {
+    color: var(--text-secondary, #a0aec0);
+  }
+  .login-form label {
+    color: var(--text-primary, #e2e8f0);
+  }
+  .login-form input {
+    background: var(--bg-secondary, #1a202c);
+    border-color: var(--border-color, #4a5568);
+    color: var(--text-primary, #f7fafc);
+  }
 }
 
 </style>
