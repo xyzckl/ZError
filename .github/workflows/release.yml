@@ -35,10 +35,36 @@ jobs:
           cd src-tauri
           cargo build --release
 
+      - name: Package Release Bundle
+        run: |
+          # 创建打包临时工作目录并拷贝前端资源
+          mkdir -p zerror-release/dist
+          cp src-tauri/target/release/zerror zerror-release/
+          cp -r dist/* zerror-release/dist/
+          
+          # 拷贝项目辅助文件
+          [ -f LICENSE ] && cp LICENSE zerror-release/
+          [ -f README.md ] && cp README.md zerror-release/
+          
+          # 打包为通用的 tar.gz 压缩格式
+          tar -czf zerror-linux-x64.tar.gz -C zerror-release .
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
             src-tauri/target/release/zerror
+            zerror-linux-x64.tar.gz
+          body: |
+            ### 部署说明
+            由于当前分支专为 Headless Linux 服务器打造，Web 服务必须配合前端静态资源运行。
+            推荐下载 `zerror-linux-x64.tar.gz` 压缩包部署，该包已完整整合前端界面与后端核心服务。
+            
+            **解压与启动命令：**
+            ```bash
+            tar -xzf zerror-linux-x64.tar.gz
+            chmod +x zerror
+            sudo ./zerror
+            ```
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
