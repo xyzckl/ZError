@@ -7070,6 +7070,7 @@ dependencies = [
  "futures",
  "futures-util",
  "jieba-rs",
+ "lazy_static",
  "parking_lot",
  "quick-xml 0.31.0",
  "regex",

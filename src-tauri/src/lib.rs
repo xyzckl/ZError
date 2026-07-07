@@ -61,17 +61,63 @@ pub fn run() {
         }
     }
 
+    let exe_dir = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|d| d.to_path_buf()))
+        .unwrap_or_else(|| std::path::PathBuf::from("."));
+    let config_dir = exe_dir.join("config");
+
+    if let Err(e) = std::fs::create_dir_all(&config_dir) {
+        println!("⚠️ 创建 config 目录失败: {}", e);
+    }
+
+    let config_path = config_dir.join("config.json");
+    if !config_path.exists() {
+        let default_config = serde_json::json!({
+            "adminToken": "admin"
+        });
+        if let Err(e) = std::fs::write(&config_path, serde_json::to_string_pretty(&default_config).unwrap()) {
+            println!("⚠️ 创建 config.json 失败: {}", e);
+        }
+    }
+
+    let model_config_path = config_dir.join("model_config.json");
+    if !model_config_path.exists() {
+        if let Err(e) = std::fs::write(&model_config_path, "{}") {
+            println!("⚠️ 创建 model_config.json 失败: {}", e);
+        }
+    }
+
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
         // We will call the start_server logic directly
-        let port = 80;
-        let bind_address = "0.0.0.0".to_string();
+        let mut port = 3000;
+        let mut bind_address = "0.0.0.0".to_string();
 
-        let state = ServerState::default();
-        let _ = crate::server::start_server(port, bind_address, std::sync::Arc::new(state)).await;
+        let state = std::sync::Arc::new(ServerState::default());
+        let _ = crate::server::start_server(port, bind_address.clone(), state.clone()).await;
 
         println!("✅ 应用启动完成，Web服务器已启动");
-        // Keep the server running
-        tokio::signal::ctrl_c().await.unwrap();
+
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+        {
+            let mut restart_tx = crate::server::RESTART_TX.lock().unwrap();
+            *restart_tx = Some(tx);
+        }
+
+        loop {
+            tokio::select! {
+                _ = tokio::signal::ctrl_c() => {
+                    break;
+                }
+                Some((new_port, new_bind)) = rx.recv() => {
+                    println!("🔄 重新启动服务器，端口：{}，地址：{}", new_port, new_bind);
+                    let _ = crate::server::stop_server(state.clone()).await;
+                    port = new_port;
+                    bind_address = new_bind;
+                    let _ = crate::server::start_server(port, bind_address.clone(), state.clone()).await;
+                }
+            }
+        }
     });
 }
