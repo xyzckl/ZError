@@ -1160,7 +1160,7 @@ let invoke_route = warp::path!("api" / "invoke")
 
     let static_files = warp::fs::dir("../dist").or(warp::fs::dir("dist")).or(warp::fs::dir("."));
 
-    let routes = root_head_route
+    let api_routes = root_head_route
         .or(logged_routes)
         .or(query_route)
         .or(mark_pending_correction_route)
@@ -1169,8 +1169,10 @@ let invoke_route = warp::path!("api" / "invoke")
         .or(sse_logs_route)
         .or(login_route)
         .or(models_get_route)
-        .or(models_put_route).or(invoke_route).or(static_files)
-        .with(cors);
+        .or(models_put_route).or(invoke_route);
+
+    let web_routes = api_routes.clone().or(static_files).with(cors.clone());
+    let api_routes = api_routes.with(cors);
 
     // 解析绑定地址
     let bind_ip: [u8; 4] = if bind_address == "0.0.0.0" {
@@ -1199,7 +1201,6 @@ let invoke_route = warp::path!("api" / "invoke")
     // Ensure Web UI is only started once
     static WEB_UI_STARTED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
     if !WEB_UI_STARTED.swap(true, std::sync::atomic::Ordering::SeqCst) {
-        let web_routes = routes.clone();
         tokio::spawn(async move {
             println!("🚀 Web UI running on port {}", web_port);
             warp::serve(web_routes).run((bind_ip, web_port)).await;
@@ -1209,7 +1210,7 @@ let invoke_route = warp::path!("api" / "invoke")
     // 在后台启动服务器
     let server_handle = tokio::spawn(async move {
         println!("🚀 API Server running on port {}", port);
-        warp::serve(routes).run((bind_ip, port)).await;
+        warp::serve(api_routes).run((bind_ip, port)).await;
     });
 
 

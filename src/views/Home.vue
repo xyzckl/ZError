@@ -1233,12 +1233,6 @@ const stopLogPolling = () => {
 }
 
 const clearLogs = async () => {
-  if (!isTauri.value) {
-    // 在非Tauri环境中只清空本地数组
-    requestLogs.value = []
-    return
-  }
-
   try {
     const { invoke } = await import('../utils/invoke')
     await invoke('clear_request_logs')
@@ -1253,11 +1247,6 @@ const clearLogs = async () => {
 
 // 获取请求日志（保留此函数用于手动刷新或初始化，但不在SSE模式下自动调用）
 const fetchRequestLogs = async () => {
-  if (!isTauri.value) {
-    console.log('不在 Tauri 环境中，跳过获取请求日志')
-    return
-  }
-
   try {
     const { invoke } = await import('../utils/invoke')
     const logs = await invoke('get_request_logs')
@@ -1519,15 +1508,6 @@ const getServerStatus = async () => {
     isTauri: isTauri.value
   })
 
-  if (!isTauri.value) {
-    // Fallback for web environment
-    console.log('不在 Tauri 环境中，使用默认状态')
-    serverRunning.value = false
-    serverUrl.value = ''
-    serverPort.value = null
-    return
-  }
-
   try {
     const { invoke } = await import('../utils/invoke')
     const status = await invoke('get_server_status')
@@ -1544,11 +1524,6 @@ const getServerStatus = async () => {
 }
 
 const startServer = async () => {
-  if (!isTauri.value) {
-    alert('此功能仅在 Tauri 应用中可用')
-    return
-  }
-
   try {
     isToggling.value = true
     const { invoke } = await import('../utils/invoke')
@@ -1580,11 +1555,6 @@ const startServer = async () => {
 }
 
 const stopServer = async () => {
-  if (!isTauri.value) {
-    alert('此功能仅在 Tauri 应用中可用')
-    return
-  }
-
   try {
     isToggling.value = true
     cancelAllInFlightModelRequests()
@@ -1688,7 +1658,6 @@ const handleFolderConfirm = async (folderId: number, folderName: string, folderP
 
 async function updateThinkingModelFlag(model: AIModel | null): Promise<void> {
   try {
-    if (!isTauri.value) return
     const { invoke } = await import('../utils/invoke')
     const isThinking = !!model?.jsCode && model.jsCode.includes('reasoning_content')
     // 同时传入 is_thinking 与 isThinking，兼容不同后端参数命名
@@ -2187,10 +2156,6 @@ onMounted(async () => {
   // 初始化当前选中的模型
   currentModel.value = globalSelectedModel.value
 
-  // 如果不在Tauri环境中，添加示例请求记录（用于测试）
-  if (!isTauri.value) {
-    addSampleLogs()
-  }
 })
 
 // 监听全局选中模型的变化，同步更新本地状态

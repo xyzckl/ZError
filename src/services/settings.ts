@@ -140,7 +140,6 @@ class SettingsManager {
    * 从 exe 同级目录的 config.json 异步加载设置
    */
   private async loadFromFile(): Promise<void> {
-    if (!environmentDetector.isTauriEnvironment(true)) return
     try {
       const { invoke } = await import('../utils/invoke')
       const content = await invoke<string>('read_config')
@@ -168,12 +167,10 @@ class SettingsManager {
       throw new Error('设置保存失败')
     }
     // 异步写入配置文件
-    if (environmentDetector.isTauriEnvironment(true)) {
-      import('../utils/invoke').then(({ invoke }) => {
-        invoke('write_config', { content: JSON.stringify(this.settings, null, 2) })
-          .catch(e => console.warn('写入配置文件失败:', e))
-      })
-    }
+    import('../utils/invoke').then(({ invoke }) => {
+      invoke('write_config', { content: JSON.stringify(this.settings, null, 2) })
+        .catch(e => console.warn('写入配置文件失败:', e))
+    })
   }
 
   /**
