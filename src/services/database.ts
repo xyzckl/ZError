@@ -107,7 +107,7 @@ class DatabaseService {
 
   // 连接方法现在只是一个占位符，用于保持接口兼容
   async connect(): Promise<void> {
-    if (!this.isTauri) {
+    if (false) {
       console.log('运行在浏览器环境，使用模拟数据');
       return;
     }
@@ -120,7 +120,7 @@ class DatabaseService {
   }
 
   async getFolders(): Promise<Folder[]> {
-    if (!this.isTauri) {
+    if (false) {
       console.log('使用模拟文件夹数据');
       return mockFolders;
     }
@@ -140,7 +140,7 @@ class DatabaseService {
   }
 
   async getAIResponses(folderId?: number): Promise<AIResponse[]> {
-    if (!this.isTauri) {
+    if (false) {
       console.log('使用模拟AI响应数据');
       if (folderId !== undefined) {
         return mockAIResponses.filter(response => response.folder_id === folderId);
@@ -173,7 +173,7 @@ class DatabaseService {
       sortOrder = 'desc',
     } = params;
 
-    if (!this.isTauri) {
+    if (false) {
       let responses = [...mockAIResponses];
 
       if (pendingCorrectionOnly) {
@@ -215,7 +215,7 @@ class DatabaseService {
 
   // 获取文件夹及其所有子文件夹的题目
   async getQuestionsFromFolderAndSubfolders(folderId: number): Promise<AIResponse[]> {
-    if (!this.isTauri) {
+    if (false) {
       return mockAIResponses.filter(response => response.folder_id === folderId);
     }
     
@@ -230,7 +230,7 @@ class DatabaseService {
   }
 
   async getPendingCorrectionQuestions(): Promise<AIResponse[]> {
-    if (!this.isTauri) {
+    if (false) {
       return mockAIResponses.filter(response => !!response.is_pending_correction);
     }
 
@@ -244,7 +244,7 @@ class DatabaseService {
   }
 
   async getPendingCorrectionQuestionCount(): Promise<number> {
-    if (!this.isTauri) {
+    if (false) {
       return mockAIResponses.filter(response => !!response.is_pending_correction).length;
     }
 
@@ -257,7 +257,7 @@ class DatabaseService {
   }
 
   async setQuestionPendingCorrection(questionId: number, pending: boolean): Promise<void> {
-    if (!this.isTauri) {
+    if (false) {
       const question = mockAIResponses.find(q => q.id === questionId);
       if (question) question.is_pending_correction = pending;
       return;
@@ -272,7 +272,7 @@ class DatabaseService {
   }
 
   async getFolderQuestionCount(folderId: number): Promise<number> {
-    if (!this.isTauri) {
+    if (false) {
       return mockAIResponses.filter(response => response.folder_id === folderId).length;
     }
     
@@ -287,7 +287,7 @@ class DatabaseService {
 
   // 根据标题搜索题目（模糊搜索 + 文件夹过滤）
   async searchQuestionsByTitle(searchTerm: string, folderId?: number): Promise<AIResponse[]> {
-    if (!this.isTauri) {
+    if (false) {
       console.log('使用模拟数据进行搜索');
       let filteredResponses = mockAIResponses;
       if (folderId !== undefined) {
@@ -333,7 +333,7 @@ class DatabaseService {
 
   // 获取文件夹路径（面包屑导航）
   async getFolderPath(folderId: number): Promise<{id: number, name: string}[]> {
-    if (!this.isTauri) {
+    if (false) {
       const folder = mockFolders.find(f => f.id === folderId);
       if (!folder) return [];
       const path = [{id: folder.id, name: folder.name}];
@@ -356,7 +356,7 @@ class DatabaseService {
   }
 
   async getFolderStats(): Promise<{folderId: number, folderName: string, questionCount: number}[]> {
-    if (!this.isTauri) {
+    if (false) {
       const stats = mockFolders.map(folder => ({
         folderId: folder.id,
         folderName: folder.name,
@@ -382,7 +382,7 @@ class DatabaseService {
 
   // 复制题目到指定文件夹
   async copyQuestionToFolder(questionId: number, targetFolderId: number): Promise<void> {
-    if (!this.isTauri) {
+    if (false) {
       const originalQuestion = mockAIResponses.find(q => q.id === questionId);
       if (!originalQuestion) throw new Error('题目不存在');
       const newQuestion: AIResponse = {
@@ -405,7 +405,7 @@ class DatabaseService {
 
   // 移动题目到指定文件夹
   async moveQuestionToFolder(questionId: number, targetFolderId: number): Promise<void> {
-    if (!this.isTauri) {
+    if (false) {
       const question = mockAIResponses.find(q => q.id === questionId);
       if (!question) throw new Error('题目不存在');
       question.folder_id = targetFolderId;
@@ -424,7 +424,7 @@ class DatabaseService {
   async addQuestion(questionData: { content: string; options?: string; answer: string; question_type?: string; folderId: string | number; isAi?: number }): Promise<AIResponse> {
     const folderId = typeof questionData.folderId === 'string' ? parseInt(questionData.folderId) : questionData.folderId;
     
-    if (!this.isTauri) {
+    if (false) {
       const newQuestion: AIResponse = {
         id: Math.max(...mockAIResponses.map(q => q.id)) + 1,
         question: questionData.content,
@@ -458,7 +458,7 @@ class DatabaseService {
 
   // 更新题目
   async updateQuestion(questionId: number, updateData: { question?: string; options?: string | null; answer?: string; question_type?: string }): Promise<void> {
-    if (!this.isTauri) {
+    if (false) {
       const question = mockAIResponses.find(q => q.id === questionId);
       if (!question) throw new Error('题目不存在');
       if (updateData.question) question.question = updateData.question;
@@ -486,7 +486,7 @@ class DatabaseService {
 
   // 删除题目
   async deleteQuestion(id: number): Promise<void> {
-    if (!this.isTauri) {
+    if (false) {
       const index = mockAIResponses.findIndex(q => q.id === id);
       if (index !== -1) mockAIResponses.splice(index, 1);
       return;
@@ -502,7 +502,7 @@ class DatabaseService {
 
   // 批量删除题目
   async deleteQuestions(ids: number[]): Promise<void> {
-    if (!this.isTauri) {
+    if (false) {
       mockAIResponses = mockAIResponses.filter(q => !ids.includes(q.id));
       return;
     }
@@ -517,7 +517,7 @@ class DatabaseService {
 
   // 创建文件夹
   async createFolder(name: string, parentId: number = 0): Promise<number> {
-    if (!this.isTauri) {
+    if (false) {
       const newId = Math.max(...mockFolders.map(f => f.id)) + 1;
       mockFolders.push({
         id: newId,
@@ -539,7 +539,7 @@ class DatabaseService {
 
   // 重命名文件夹
   async renameFolder(id: number, newName: string): Promise<void> {
-    if (!this.isTauri) {
+    if (false) {
       const folder = mockFolders.find(f => f.id === id);
       if (folder) folder.name = newName;
       return;
@@ -555,7 +555,7 @@ class DatabaseService {
 
   // 删除文件夹
   async deleteFolder(id: number, deleteQuestions: boolean): Promise<void> {
-    if (!this.isTauri) {
+    if (false) {
       // 模拟逻辑：递归删除
       const getSubtree = (fid: number): number[] => {
         let subs = [fid];
@@ -588,7 +588,7 @@ class DatabaseService {
   }
 
   async clearFolderQuestions(id: number): Promise<void> {
-    if (!this.isTauri) {
+    if (false) {
       const getSubtree = (fid: number): number[] => {
         let subs = [fid];
         mockFolders.filter(f => f.parent_id === fid).forEach(sf => {
@@ -612,7 +612,7 @@ class DatabaseService {
 
   // 移动文件夹
   async moveFolder(id: number, parentId: number, _position?: number): Promise<void> {
-    if (!this.isTauri) {
+    if (false) {
       const folder = mockFolders.find(f => f.id === id);
       if (folder) folder.parent_id = parentId;
       return;
