@@ -90,6 +90,7 @@ sudo fuser -k 8080/tcp 3000/tcp 2>/dev/null
 ```
 
 ### 第三步：配置 Systemd 守护进程
+### (或者单次启动：sudo ./zerror)
 
 在轻量级服务器上，使用系统自带的 `systemd` 托管程序是最节省系统资源且最稳定的生产环境方案。
 
