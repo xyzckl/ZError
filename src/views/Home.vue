@@ -952,7 +952,7 @@ const startSSEConnection = () => {
   }
 
   try {
-    const sseUrl = serverUrl.value.replace('http://', 'http://').replace(':3000', ':3000') + '/api/logs/stream'
+    const sseUrl = '/api/logs/stream'
     console.log('连接SSE:', sseUrl)
 
     sseEventSource = new EventSource(sseUrl)
@@ -2184,7 +2184,7 @@ const callSingleModelAPI = async (model: AIModel, query: string, logId: string):
         modelId: model.id
       }
     }
-    if (serverRunning.value && serverUrl.value && !heartbeatIntervals.has(logId)) {
+    if (serverRunning.value && !heartbeatIntervals.has(logId)) {
       const timerId = window.setInterval(() => {
         try {
           const currentContent = requestLogs.value[requestLogs.value.findIndex(l => l.id === logId)]?.modelResponse || ''
@@ -2265,7 +2265,7 @@ const callModelAPI = async (requestId: string, query: string) => {
     }
 
     // 启动心跳
-    if (serverRunning.value && serverUrl.value && !heartbeatIntervals.has(requestId)) {
+    if (serverRunning.value && !heartbeatIntervals.has(requestId)) {
       const timerId = window.setInterval(() => {
         try {
           const log = requestLogs.value.find(l => l.id === requestId)
@@ -2477,7 +2477,7 @@ ${baseCombinedResponse}
       log.isModelCalling = false
     }
 
-    if (serverRunning.value && serverUrl.value) {
+    if (serverRunning.value) {
       await sendModelResponseToBackend(requestId, errorText, false)
     }
   } finally {
@@ -2556,7 +2556,7 @@ const sendModelResponseToBackend = async (requestId: string, content: string, is
   }
 
   try {
-    const response = await fetch(`${serverUrl.value}/api/model/response`, {
+    const response = await fetch(`/api/model/response`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -2596,7 +2596,7 @@ const sendModelResponseToBackend = async (requestId: string, content: string, is
 // 发送模型进度到后端（用于流式输出期间的活跃心跳）
 const sendModelProgressToBackend = async (requestId: string, content: string) => {
   try {
-    const response = await fetch(`${serverUrl.value}/api/model/progress`, {
+    const response = await fetch(`/api/model/progress`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
