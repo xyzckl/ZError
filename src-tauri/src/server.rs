@@ -22,11 +22,15 @@ use serde_json::Value;
 use std::collections::HashMap;
 use tauri::{Emitter, State};
 use tokio_stream::wrappers::BroadcastStream;
+use tokio::sync::mpsc;
+
+lazy_static::lazy_static! {
+    pub static ref RESTART_TX: std::sync::Mutex<Option<mpsc::UnboundedSender<(u16, String)>>> = std::sync::Mutex::new(None);
+}
+
 use uuid;
 use warp::http::HeaderMap;
 use warp::Filter;
-
-const QUERY_TEST_PAGE_HTML: &str = include_str!("query_test_page.html");
 
 /// 验证管理员 token（从 Authorization: Bearer <token> 或直接值中提取）
 fn check_admin_token(auth: &Option<String>) -> bool {
@@ -48,7 +52,7 @@ fn check_admin_token(auth: &Option<String>) -> bool {
         .ok()
         .and_then(|p| p.parent().map(|d| d.to_path_buf()))
         .unwrap_or_else(|| std::path::PathBuf::from("."))
-        .join("config.json");
+        .join("config").join("config.json");
     let config: serde_json::Value = std::fs::read_to_string(&config_path)
         .ok()
         .and_then(|s| serde_json::from_str(&s).ok())
@@ -811,10 +815,6 @@ pub async fn start_server(
             warp::sse::reply(stream)
         });
 
-    let root_route = warp::path::end()
-        .and(warp::get())
-        .map(|| warp::reply::html(QUERY_TEST_PAGE_HTML));
-
     // 根路由的HEAD方法
     let app_handle_clone = state.app_handle.clone();
     let root_head_route = warp::path::end()
@@ -882,7 +882,7 @@ pub async fn start_server(
                     .ok()
                     .and_then(|p| p.parent().map(|d| d.to_path_buf()))
                     .unwrap_or_else(|| std::path::PathBuf::from("."));
-                exe_dir.join("config.json")
+                exe_dir.join("config").join("config.json")
             };
             let config_str = std::fs::read_to_string(&config_path).unwrap_or_default();
             let config: serde_json::Value = serde_json::from_str(&config_str).unwrap_or_default();
@@ -931,7 +931,7 @@ pub async fn start_server(
                 .ok()
                 .and_then(|p| p.parent().map(|d| d.to_path_buf()))
                 .unwrap_or_else(|| std::path::PathBuf::from("."))
-                .join("model_config.json");
+                .join("config").join("model_config.json");
             let data: serde_json::Value = std::fs::read_to_string(&path)
                 .ok()
                 .and_then(|s| serde_json::from_str(&s).ok())
@@ -959,7 +959,7 @@ pub async fn start_server(
                 .ok()
                 .and_then(|p| p.parent().map(|d| d.to_path_buf()))
                 .unwrap_or_else(|| std::path::PathBuf::from("."))
-                .join("model_config.json");
+                .join("config").join("model_config.json");
             match std::fs::write(&path, body.to_string()) {
                 Ok(_) => Ok::<_, warp::Rejection>(warp::reply::with_status(
                     warp::reply::json(&serde_json::json!({"success": true})),
@@ -979,8 +979,12 @@ pub async fn start_server(
 let invoke_route = warp::path!("api" / "invoke")
         .and(warp::post())
         .and(warp::body::json())
+        .and(warp::any().map({
+            let state = state.clone();
+            move || state.clone()
+        }))
         .and(warp::header::optional::<String>("authorization"))
-        .and_then(|body: InvokeRequest, auth: Option<String>| async move {
+        .and_then(|body: InvokeRequest, state: std::sync::Arc<ServerState>, auth: Option<String>| async move {
             if !crate::server::check_admin_token(&auth) {
                 // Return unauthorized if no valid token
                 // Actually, the original app allowed everything without token when local.
@@ -1124,6 +1128,23 @@ let invoke_route = warp::path!("api" / "invoke")
                     let url = body.args.get("url").and_then(|v| v.as_str()).unwrap_or("");
                     serde_json::to_value(String::new()).unwrap()
                 },
+                "get_server_status" => {
+                    let status = crate::server::get_server_status(state).await.unwrap();
+                    serde_json::to_value(status).unwrap()
+                },
+                "stop_server" => {
+                    let status = crate::server::stop_server(state).await.unwrap();
+                    serde_json::to_value(status).unwrap()
+                },
+                "start_server" => {
+                    let port = body.args.get("port").and_then(|v| v.as_u64()).unwrap_or(3000) as u16;
+                    let bind_address = body.args.get("bindAddress").and_then(|v| v.as_str()).unwrap_or("0.0.0.0").to_string();
+
+                    if let Some(tx) = RESTART_TX.lock().unwrap().as_ref() {
+                        let _ = tx.send((port, bind_address));
+                    }
+                    serde_json::json!({"success": true, "running": true, "url": format!("http://127.0.0.1:{}", port)})
+                },
                 _ => {
                     return Ok::<_, warp::Rejection>(warp::reply::json(&serde_json::json!({
                         "success": false,
@@ -1139,8 +1160,7 @@ let invoke_route = warp::path!("api" / "invoke")
 
     let static_files = warp::fs::dir("../dist").or(warp::fs::dir("dist")).or(warp::fs::dir("."));
 
-    let routes = root_route
-        .or(root_head_route)
+    let api_routes = root_head_route
         .or(logged_routes)
         .or(query_route)
         .or(mark_pending_correction_route)
@@ -1149,8 +1169,10 @@ let invoke_route = warp::path!("api" / "invoke")
         .or(sse_logs_route)
         .or(login_route)
         .or(models_get_route)
-        .or(models_put_route).or(invoke_route).or(static_files)
-        .with(cors);
+        .or(models_put_route).or(invoke_route);
+
+    let web_routes = api_routes.clone().or(static_files).with(cors.clone());
+    let api_routes = api_routes.with(cors);
 
     // 解析绑定地址
     let bind_ip: [u8; 4] = if bind_address == "0.0.0.0" {
@@ -1176,17 +1198,19 @@ let invoke_route = warp::path!("api" / "invoke")
 
     let web_port = get_web_port().unwrap_or(8080);
 
-    // API and web UI
-    let web_routes = routes.clone();
-    tokio::spawn(async move {
-        println!("🚀 Web UI running on port {}", web_port);
-        warp::serve(web_routes).run((bind_ip, web_port)).await;
-    });
+    // Ensure Web UI is only started once
+    static WEB_UI_STARTED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+    if !WEB_UI_STARTED.swap(true, std::sync::atomic::Ordering::SeqCst) {
+        tokio::spawn(async move {
+            println!("🚀 Web UI running on port {}", web_port);
+            warp::serve(web_routes).run((bind_ip, web_port)).await;
+        });
+    }
 
     // 在后台启动服务器
     let server_handle = tokio::spawn(async move {
         println!("🚀 API Server running on port {}", port);
-        warp::serve(routes).run((bind_ip, port)).await;
+        warp::serve(api_routes).run((bind_ip, port)).await;
     });
 
 
