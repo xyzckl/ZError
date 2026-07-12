@@ -66,7 +66,7 @@ pub fn run() {
         .and_then(|p| p.parent().map(|d| d.to_path_buf()))
         .unwrap_or_else(|| std::path::PathBuf::from("."));
     let config_dir = exe_dir.join("config");
-
+    
     if let Err(e) = std::fs::create_dir_all(&config_dir) {
         println!("⚠️ 创建 config 目录失败: {}", e);
     }
@@ -80,7 +80,7 @@ pub fn run() {
             println!("⚠️ 创建 config.json 失败: {}", e);
         }
     }
-
+    
     let model_config_path = config_dir.join("model_config.json");
     if !model_config_path.exists() {
         if let Err(e) = std::fs::write(&model_config_path, "{}") {
