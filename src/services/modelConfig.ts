@@ -401,7 +401,7 @@ class ModelConfigManager {
     const enabledPlatforms = this.settings.platforms.filter(platform => platform.enabled !== false)
     const allModels = enabledPlatforms.flatMap(platform => platform.models || [])
     const enabledModels = allModels.filter(model => model.enabled !== false)
-    const textModelIds = new Set(enabledModels.filter(model => model.category === 'text').map(model => model.id))
+    const textModelIds = new Set(enabledModels.filter(model => model.category === 'text' || !model.category).map(model => model.id))
     const summaryModelIds = new Set(enabledModels.map(model => model.id))
     const visionModelIds = new Set(enabledModels.filter(model => model.category === 'vision').map(model => model.id))
 
@@ -776,12 +776,12 @@ class ModelConfigManager {
     // 优先从新字段 [0] 获取
     if (this.settings.selectedTextModels && this.settings.selectedTextModels.length > 0) {
       const allModels = this.settings.platforms.flatMap(p => p.models)
-      return allModels.find(m => m.id === this.settings.selectedTextModels[0] && m.category === 'text') || null
+      return allModels.find(m => m.id === this.settings.selectedTextModels[0] && (m.category === 'text' || !m.category)) || null
     }
     // 兜底从旧字段获取
     if (this.settings.selectedTextModel) {
       const allModels = this.settings.platforms.flatMap(p => p.models)
-      return allModels.find(m => m.id === this.settings.selectedTextModel && m.category === 'text') || null
+      return allModels.find(m => m.id === this.settings.selectedTextModel && (m.category === 'text' || !m.category)) || null
     }
     return null
   }
@@ -794,7 +794,7 @@ class ModelConfigManager {
     if (this.settings.selectedTextModels && this.settings.selectedTextModels.length > 0) {
       const allModels = this.settings.platforms.flatMap(p => p.models)
       return this.settings.selectedTextModels
-        .map(id => allModels.find(m => m.id === id && m.category === 'text'))
+        .map(id => allModels.find(m => m.id === id && (m.category === 'text' || !m.category)))
         .filter((m): m is AIModel => m !== undefined)
     }
     // 如果新字段为空但旧字段有值，尝试转换
