@@ -1846,7 +1846,7 @@ const callModelWithStreaming = async (
   registerAbortController(requestId, abortController)
   const timeoutHandle = setTimeout(() => abortController.abort(), timeoutMs)
 
-  const tauriHttp = { fetch }
+  const tauriHttp = { fetch: window.fetch.bind(window) }
   const { invoke } = await import('../utils/invoke')
   const tauriFetch = (input: RequestInfo | URL, init: RequestInit = {}) =>
     tauriHttp.fetch(input as any, {
@@ -2079,7 +2079,7 @@ const callModel = async (model: AIModel, query: string) => {
     ...model
   }
 
-  const tauriHttp = { fetch }
+  const tauriHttp = { fetch: window.fetch.bind(window) }
   const tauriFetch = (input: RequestInfo | URL, init: RequestInit = {}) =>
     tauriHttp.fetch(input as any, {
       ...init,
@@ -3514,7 +3514,7 @@ const analyzeUrlQuestion = async (requestId: string) => {
     }
     const config = { apiKey: platform.apiKey, baseUrl: platform.baseUrl, model: visionModel.id, ...visionModel }
 
-    const tauriHttp = { fetch }
+    const tauriHttp = { fetch: window.fetch.bind(window) }
     const tauriFetch: typeof fetch = ((input: RequestInfo | URL, init: RequestInit = {}) =>
       tauriHttp.fetch(input as any, {
         ...init,

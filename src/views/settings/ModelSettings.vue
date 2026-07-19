@@ -1528,7 +1528,7 @@ const testModel = async (model: AIModel, testFunctionCalling: boolean = false) =
       ...model
     }
     
-    const tauriHttp = { fetch }
+    const tauriHttp = { fetch: window.fetch.bind(window) }
     const tauriFetch = createCookieEnabledFetch(
       (input, init) => tauriHttp.fetch(input as any, init as any),
       testAbortController.value?.signal
